@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  project: platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  source:
+    repoURL: https://github.com/<you>/gitops-root.git
+    targetRevision: main
+    path: apps/argo-cd
+    helm:
+      releaseName: argo-cd
+  syncPolicy:
+    automated: {}
+  syncOptions:
+    - SyncWave=2

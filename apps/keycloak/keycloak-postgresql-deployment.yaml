@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak-postgresql
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: keycloak-postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak-postgresql
+  template:
+    metadata:
+      labels:
+        app: keycloak-postgresql
+    spec:
+      containers:
+        - name: postgresql
+          image: {{ .Values.externalDatabase.image | default "postgres:15" }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.externalDatabase.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.externalDatabase.user }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.externalDatabase.password }}

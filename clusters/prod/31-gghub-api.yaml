@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gghub-api
+  namespace: argocd
+spec:
+  project: business
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gghub
+  source:
+    repoURL: https://github.com/<you>/gitops-root.git
+    targetRevision: main
+    path: apps/gghub/api
+  syncPolicy:
+    automated: {}
+  syncOptions:
+    - SyncWave=4
+  # formal Argo dependency: wait for DB & Keycloak to be healthy
+  # before this one syncs.
+  dependsOn:
+    - name: gghub-db
+    - name: keycloak

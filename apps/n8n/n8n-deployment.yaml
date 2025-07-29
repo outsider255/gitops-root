@@ -1,0 +1,51 @@
+# n8n-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+    spec:
+      containers:
+        - name: n8n
+          image: n8nio/n8n
+          ports:
+            - containerPort: 5678
+          env:
+            - name: GENERIC_TIMEZONE
+              value: 'Europe/Warsaw'
+            - name: N8N_BASIC_AUTH_ACTIVE
+              value: 'true'
+            - name: N8N_BASIC_AUTH_USER
+              value: 'admin'
+            - name: N8N_BASIC_AUTH_PASSWORD
+              value: 'supersecurepassword'
+            - name: WEBHOOK_URL
+              value: https://n8n.gghub.ovh
+          volumeMounts:
+            - name: n8n-storage
+              mountPath: /home/node/.n8n
+      volumes:
+        - name: n8n-storage
+          persistentVolumeClaim:
+            claimName: n8n-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  selector:
+    app: n8n
+  ports:
+    - port: 80
+      targetPort: 5678

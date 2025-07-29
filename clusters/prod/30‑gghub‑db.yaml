@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gghub-db
+  namespace: argocd
+spec:
+  project: business
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gghub
+  source:
+    repoURL: https://github.com/<you>/gitops-root.git
+    targetRevision: main
+    path: apps/gghub/db
+    helm:
+      chart: postgresql
+      repoURL: https://charts.bitnami.com/bitnami
+      releaseName: gghub-db
+      parameters:
+        - name: auth.postgresPassword
+          value: 'CHANGE_ME'
+  syncPolicy:
+    automated: {}
+  syncOptions:
+    - SyncWave=3

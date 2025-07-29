@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: platform
+spec:
+  project: platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  source:
+    repoURL: https://github.com/<you>/gitops-root.git
+    targetRevision: main
+    path: apps/cert-manager # <= put a HelmChart or kustom overlay here
+    helm:
+      releaseName: cert-manager
+      valueFiles:
+        - values.yaml
+  syncPolicy:
+    automated: {}
+  syncOptions:
+    - SyncWave=1 # <- sets order programmatically
