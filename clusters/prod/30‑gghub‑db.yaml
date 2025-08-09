@@ -6,7 +6,7 @@ metadata:
 spec:
   project: business
   destination:
-    server: https://kubernetes.default.svc
+    name: in-cluster
     namespace: gghub
   source:
     repoURL: https://github.com/outsider255/gitops-root.git
