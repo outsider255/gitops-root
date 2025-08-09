@@ -12,10 +12,6 @@ spec:
     repoURL: https://github.com/outsider255/gitops-root.git
     targetRevision: main
     path: apps/n8n
-    helm:
-      chart: n8n
-      repoURL: https://community-charts.github.io/helm-charts
-      releaseName: n8n
   syncPolicy:
     automated: {}
   syncOptions:

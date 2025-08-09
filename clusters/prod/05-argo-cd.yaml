@@ -12,8 +12,6 @@ spec:
     repoURL: https://github.com/outsider255/gitops-root.git
     targetRevision: main
     path: apps/argo-cd
-    helm:
-      releaseName: argo-cd
   syncPolicy:
     automated: {}
   syncOptions:

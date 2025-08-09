@@ -12,13 +12,6 @@ spec:
     repoURL: https://github.com/outsider255/gitops-root.git
     targetRevision: main
     path: apps/gghub/db
-    helm:
-      chart: postgresql
-      repoURL: https://charts.bitnami.com/bitnami
-      releaseName: gghub-db
-      parameters:
-        - name: auth.postgresPassword
-          value: 'CHANGE_ME'
   syncPolicy:
     automated: {}
   syncOptions:

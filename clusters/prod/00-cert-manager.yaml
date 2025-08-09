@@ -14,10 +14,6 @@ spec:
     repoURL: https://github.com/outsider255/gitops-root.git
     targetRevision: main
     path: apps/cert-manager # <= put a HelmChart or kustom overlay here
-    helm:
-      releaseName: cert-manager
-      valueFiles:
-        - values.yaml
   syncPolicy:
     automated: {}
   syncOptions:
