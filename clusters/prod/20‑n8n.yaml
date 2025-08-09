@@ -9,7 +9,7 @@ spec:
     server: https://kubernetes.default.svc
     namespace: n8n
   source:
-    repoURL: https://github.com/<you>/gitops-root.git
+    repoURL: https://github.com/outsider255/gitops-root.git
     targetRevision: main
     path: apps/n8n
     helm:
