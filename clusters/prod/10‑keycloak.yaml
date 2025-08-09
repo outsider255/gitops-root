@@ -6,7 +6,7 @@ metadata:
 spec:
   project: platform
   destination:
-    name: in-cluster
+    server: https://kubernetes.default.svc
     namespace: keycloak
   source:
     repoURL: https://github.com/outsider255/gitops-root.git
