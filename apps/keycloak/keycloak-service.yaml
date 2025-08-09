@@ -2,11 +2,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: keycloak
-  namespace: { { .Values.namespace } }
+  namespace: keycloak
 spec:
   selector:
     app: keycloak
   ports:
     - protocol: TCP
-      port: { { .Values.keycloak.servicePort } }
+      port: 8080
       targetPort: 8080
+  type: ClusterIP

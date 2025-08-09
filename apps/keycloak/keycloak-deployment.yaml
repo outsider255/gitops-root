@@ -2,9 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: keycloak
-  namespace: { { .Values.namespace } }
+  namespace: keycloak
+  labels:
+    app: keycloak
 spec:
-  replicas: { { .Values.keycloak.replicas } }
+  replicas: 1
   selector:
     matchLabels:
       app: keycloak
@@ -15,23 +17,45 @@ spec:
     spec:
       containers:
         - name: keycloak
-          image: quay.io/keycloak/keycloak:latest
+          image: quay.io/keycloak/keycloak:26.0.2
           args: ['start-dev']
           ports:
             - containerPort: 8080
           env:
             - name: KEYCLOAK_ADMIN
-              value: { { .Values.keycloak.adminUser | quote } }
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: KEYCLOAK_ADMIN
             - name: KEYCLOAK_ADMIN_PASSWORD
-              value: { { .Values.keycloak.adminPassword | quote } }
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: KEYCLOAK_ADMIN_PASSWORD
             - name: KC_DB
               value: postgres
-            - name: KC_DB_URL
-              value:
-                jdbc:postgresql://{{ .Values.externalDatabase.host }}:{{
-                .Values.externalDatabase.port }}/{{
-                .Values.externalDatabase.database }}
             - name: KC_DB_USERNAME
-              value: { { .Values.externalDatabase.user | quote } }
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db
+                  key: POSTGRES_USER
             - name: KC_DB_PASSWORD
-              value: { { .Values.externalDatabase.password | quote } }
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-db
+                  key: POSTGRES_PASSWORD
+            - name: KC_DB_URL
+              value: jdbc:postgresql://keycloak-postgresql.keycloak.svc.cluster.local:5432/keycloak
+          # Prosty readiness (Keycloak /health/ready działa w nowszych wersjach)
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
