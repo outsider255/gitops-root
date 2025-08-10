@@ -13,6 +13,8 @@ spec:
     targetRevision: main
     path: apps/argo-cd
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
+      selfHeal: true
   syncOptions:
     - SyncWave=2

@@ -13,6 +13,8 @@ spec:
     targetRevision: main
     path: apps/gghub/db
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
+      selfHeal: true
   syncOptions:
     - SyncWave=3

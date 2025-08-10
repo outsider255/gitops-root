@@ -13,6 +13,8 @@ spec:
     targetRevision: main
     path: apps/n8n
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
+      selfHeal: true
   syncOptions:
     - SyncWave=4

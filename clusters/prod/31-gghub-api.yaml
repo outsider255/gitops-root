@@ -13,7 +13,9 @@ spec:
     targetRevision: main
     path: apps/gghub/api
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
+      selfHeal: true
   syncOptions:
     - SyncWave=4
   # formal Argo dependency: wait for DB & Keycloak to be healthy
