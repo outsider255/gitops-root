@@ -1,0 +1,58 @@
+{
+  "name": "nano-banana-pro-test",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nano-banana-test-trigger",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Manual Test Webhook",
+      "webhookId": "8a2c4e6f-1b3d-4f5e-9c7a-2b4d6e8f0a1c",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { contents: [ { parts: [ { text: \"A cozy glass jar terrarium on a rainy windowsill, glowing bioluminescent cyan mushrooms, soft green moss carpet, warm wooden shelf, raindrops on the glass surface, a tiny whimsical forest spirit creature with small antlers tending green sprouts inside the terrarium, a steaming mug nearby, warm magical lofi aesthetic, soft lighting, depth through foreground glass and raindrops, midground mascot and terrarium contents, background window with rain outside, digital illustration style, no text, no human faces\" } ] } ], generationConfig: { responseModalities: [\"IMAGE\"] } } }}",
+        "options": {}
+      },
+      "id": "2",
+      "name": "Generate Nano Banana Pro Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 300],
+      "credentials": {
+        "googlePalmApi": { "id": "URXVDs4gil9L3d94", "name": "Gemini API" }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "a1", "name": "image_base64", "type": "string", "value": "={{$json.candidates[0].content.parts.find(p => p.inlineData).inlineData.data}}" },
+          { "id": "a2", "name": "mime_type", "type": "string", "value": "={{$json.candidates[0].content.parts.find(p => p.inlineData).inlineData.mimeType}}" }
+        ] },
+        "options": {}
+      },
+      "id": "3",
+      "name": "Extract Image",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [690, 300]
+    }
+  ],
+  "connections": {
+    "Manual Test Webhook": { "main": [[ { "node": "Generate Nano Banana Pro Image", "type": "main", "index": 0 } ]] },
+    "Generate Nano Banana Pro Image": { "main": [[ { "node": "Extract Image", "type": "main", "index": 0 } ]] }
+  },
+  "settings": {}
+}
