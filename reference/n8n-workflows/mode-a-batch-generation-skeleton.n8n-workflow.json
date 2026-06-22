@@ -13,14 +13,27 @@
       "webhookId": "9f1c2a3e-44b1-4a2d-8f0a-1234567890ab",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300]
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "a1", "name": "category", "type": "string", "value": "={{ $json.body && $json.body.category ? $json.body.category : 'deep_focus' }}"},
-            {"id": "a2", "name": "batch_size", "type": "number", "value": "={{ $json.body && $json.body.batch_size ? $json.body.batch_size : 1 }}"}
+            {
+              "id": "a1",
+              "name": "category",
+              "type": "string",
+              "value": "={{ $json.body && $json.body.category ? $json.body.category : 'deep_focus' }}"
+            },
+            {
+              "id": "a2",
+              "name": "batch_size",
+              "type": "number",
+              "value": "={{ $json.body && $json.body.batch_size ? $json.body.batch_size : 1 }}"
+            }
           ]
         },
         "options": {}
@@ -29,19 +42,57 @@
       "name": "Build Batch Spec",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [470, 300]
+      "position": [
+        470,
+        300
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "b1", "name": "track_file_path", "type": "string", "value": "=/outbox/dummy-assets/trk_{{$now.format('yyyyLLddHHmmss')}}.mp3"},
-            {"id": "b2", "name": "track_duration_s", "type": "number", "value": 240},
-            {"id": "b3", "name": "track_category", "type": "string", "value": "={{$json.category}}"},
-            {"id": "b4", "name": "track_mood_tags", "type": "array", "value": "=[\"warm_pad\", \"soft_vinyl\"]"},
-            {"id": "b5", "name": "track_bpm", "type": "number", "value": 75},
-            {"id": "b6", "name": "track_qa_passed", "type": "boolean", "value": true},
-            {"id": "b7", "name": "stub_note", "type": "string", "value": "STUB: fal.ai ACE-Step API key not yet provisioned -- placeholder metadata only, no real audio generated"}
+            {
+              "id": "b1",
+              "name": "track_file_path",
+              "type": "string",
+              "value": "=/outbox/dummy-assets/trk_{{$now.format('yyyyLLddHHmmss')}}.mp3"
+            },
+            {
+              "id": "b2",
+              "name": "track_duration_s",
+              "type": "number",
+              "value": 240
+            },
+            {
+              "id": "b3",
+              "name": "track_category",
+              "type": "string",
+              "value": "={{$json.category}}"
+            },
+            {
+              "id": "b4",
+              "name": "track_mood_tags",
+              "type": "array",
+              "value": "=[\"warm_pad\", \"soft_vinyl\"]"
+            },
+            {
+              "id": "b5",
+              "name": "track_bpm",
+              "type": "number",
+              "value": 75
+            },
+            {
+              "id": "b6",
+              "name": "track_qa_passed",
+              "type": "boolean",
+              "value": true
+            },
+            {
+              "id": "b7",
+              "name": "stub_note",
+              "type": "string",
+              "value": "STUB: fal.ai ACE-Step API key not yet provisioned -- placeholder metadata only, no real audio generated"
+            }
           ]
         },
         "options": {}
@@ -50,27 +101,10 @@
       "name": "STUB Generate Track (fal.ai ACE-Step)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [690, 200]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {"id": "c1", "name": "loop_file_path", "type": "string", "value": "=/outbox/dummy-assets/loop_{{$now.format('yyyyLLddHHmmss')}}.mp4"},
-            {"id": "c2", "name": "loop_duration_s", "type": "number", "value": 8},
-            {"id": "c3", "name": "loop_category", "type": "string", "value": "={{$json.category}}"},
-            {"id": "c4", "name": "loop_scene_tags", "type": "array", "value": "=[\"center\", \"mascot_reading\"]"},
-            {"id": "c5", "name": "loop_qa_gates_passed", "type": "object", "value": "={{ {g1_seam: true, g2_pop: true, g3_distinct: true, g4_motion: true} }}"},
-            {"id": "c6", "name": "stub_note", "type": "string", "value": "STUB: Veo 3.1 Lite / Nano Banana Pro not yet wired (Google Cloud billing not provisioned) -- placeholder metadata only, no real video generated"}
-          ]
-        },
-        "options": {}
-      },
-      "id": "4",
-      "name": "STUB Generate Visual Loop (Veo 3.1 Lite)",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [690, 420]
+      "position": [
+        690,
+        200
+      ]
     },
     {
       "parameters": {
@@ -85,7 +119,10 @@
       "name": "Insert Track",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [910, 200]
+      "position": [
+        910,
+        200
+      ]
     },
     {
       "parameters": {
@@ -93,20 +130,28 @@
         "url": "http://asset-library-service.asset-library.svc.cluster.local/loops",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { file_path: $json.loop_file_path, duration_s: $json.loop_duration_s, category: $json.loop_category, scene_tags: $json.loop_scene_tags, qa_gates_passed: $json.loop_qa_gates_passed } }}",
+        "jsonBody": "={{ { file_path: $json.file_path, duration_s: 8.0, category: $('Build Batch Spec').item.json.category, scene_tags: ['nano_banana_pro_still', 'pending_motion_conversion'], qa_gates_passed: {} } }}",
         "options": {}
       },
       "id": "6",
       "name": "Insert Loop",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [910, 420]
+      "position": [
+        910,
+        420
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "d1", "name": "track_id", "type": "string", "value": "={{$json.id}}"}
+            {
+              "id": "d1",
+              "name": "track_id",
+              "type": "string",
+              "value": "={{$json.id}}"
+            }
           ]
         },
         "options": {}
@@ -115,13 +160,21 @@
       "name": "Track Insert Result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1130, 200]
+      "position": [
+        1130,
+        200
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "e1", "name": "loop_id", "type": "string", "value": "={{$json.id}}"}
+            {
+              "id": "e1",
+              "name": "loop_id",
+              "type": "string",
+              "value": "={{$json.id}}"
+            }
           ]
         },
         "options": {}
@@ -130,7 +183,10 @@
       "name": "Loop Insert Result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1130, 420]
+      "position": [
+        1130,
+        420
+      ]
     },
     {
       "parameters": {
@@ -142,15 +198,33 @@
       "name": "Merge Insert Results",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
-      "position": [1350, 300]
+      "position": [
+        1350,
+        300
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "f1", "name": "inserted_track_id", "type": "string", "value": "={{$json.track_id}}"},
-            {"id": "f2", "name": "inserted_loop_id", "type": "string", "value": "={{$json.loop_id}}"},
-            {"id": "f3", "name": "note", "type": "string", "value": "Mode A skeleton: generation calls are STUBBED (no fal.ai / Veo credentials yet) but library inserts are REAL writes to the asset-library SQLite DB via asset-library-service"}
+            {
+              "id": "f1",
+              "name": "inserted_track_id",
+              "type": "string",
+              "value": "={{$json.track_id}}"
+            },
+            {
+              "id": "f2",
+              "name": "inserted_loop_id",
+              "type": "string",
+              "value": "={{$json.loop_id}}"
+            },
+            {
+              "id": "f3",
+              "name": "note",
+              "type": "string",
+              "value": "Mode A: music generation is STILL STUBBED (no fal.ai/ElevenLabs credentials yet); visual generation is now REAL via Nano Banana Pro (Gemini API), producing a still image stored as a pending-motion-conversion loop entry. Both branches write real rows to the asset-library SQLite DB via asset-library-service."
+            }
           ]
         },
         "options": {}
@@ -159,19 +233,212 @@
       "name": "Log Result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1570, 300]
+      "position": [
+        1570,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { contents: [ { parts: [ { text: ({deep_focus: 'a bright daytime terrarium scene, the forest spirit reading a tiny book among green sprouts, cyan bioluminescent mushrooms glowing softly even in daylight, productive calm atmosphere', rainy_day: 'heavy rain streaking down the terrarium glass, the forest spirit curled up with a steaming mug watching the rain, soft grey overcast light, cozy melancholy atmosphere', night_focus: 'a dark nighttime terrarium scene lit primarily by glowing cyan bioluminescent mushrooms, the forest spirit quietly tending sprouts under their glow, deep blues and teals, focused nocturnal atmosphere', gentle_morning: 'soft golden morning light streaming through the terrarium glass, dew drops on the moss, the forest spirit gently watering a new sprout, warm and peaceful atmosphere'})[$json.category] + ', digital illustration style, depth through foreground glass and raindrops, midground mascot and terrarium contents, background window, no text, no human faces, 16:9 widescreen composition suitable as a YouTube background loop frame' } ] } ], generationConfig: { responseModalities: [\"IMAGE\"] } } }}",
+        "options": {}
+      },
+      "id": "20",
+      "name": "Generate Visual Still (Nano Banana Pro)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        690,
+        420
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "URXVDs4gil9L3d94",
+          "name": "Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "image_base64",
+              "type": "string",
+              "value": "={{$json.candidates[0].content.parts.find(p => p.inlineData).inlineData.data}}"
+            },
+            {
+              "id": "e2",
+              "name": "upload_filename",
+              "type": "string",
+              "value": "=loop_{{$('Build Batch Spec').item.json.category}}_{{$now.format('yyyyLLddHHmmss')}}.jpg"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "21",
+      "name": "Extract Image Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        910,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://asset-library-service.asset-library.svc.cluster.local/visual-assets/upload",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { filename: $json.upload_filename, content_base64: $json.image_base64 } }}",
+        "options": {}
+      },
+      "id": "22",
+      "name": "Upload Visual Asset",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1130,
+        420
+      ]
     }
   ],
   "connections": {
-    "Webhook Trigger": {"main": [[{"node": "Build Batch Spec", "type": "main", "index": 0}]]},
-    "Build Batch Spec": {"main": [[{"node": "STUB Generate Track (fal.ai ACE-Step)", "type": "main", "index": 0}, {"node": "STUB Generate Visual Loop (Veo 3.1 Lite)", "type": "main", "index": 0}]]},
-    "STUB Generate Track (fal.ai ACE-Step)": {"main": [[{"node": "Insert Track", "type": "main", "index": 0}]]},
-    "STUB Generate Visual Loop (Veo 3.1 Lite)": {"main": [[{"node": "Insert Loop", "type": "main", "index": 0}]]},
-    "Insert Track": {"main": [[{"node": "Track Insert Result", "type": "main", "index": 0}]]},
-    "Insert Loop": {"main": [[{"node": "Loop Insert Result", "type": "main", "index": 0}]]},
-    "Track Insert Result": {"main": [[{"node": "Merge Insert Results", "type": "main", "index": 0}]]},
-    "Loop Insert Result": {"main": [[{"node": "Merge Insert Results", "type": "main", "index": 1}]]},
-    "Merge Insert Results": {"main": [[{"node": "Log Result", "type": "main", "index": 0}]]}
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Batch Spec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Batch Spec": {
+      "main": [
+        [
+          {
+            "node": "STUB Generate Track (fal.ai ACE-Step)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Visual Still (Nano Banana Pro)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STUB Generate Track (fal.ai ACE-Step)": {
+      "main": [
+        [
+          {
+            "node": "Insert Track",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Track": {
+      "main": [
+        [
+          {
+            "node": "Track Insert Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Loop": {
+      "main": [
+        [
+          {
+            "node": "Loop Insert Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track Insert Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Insert Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Insert Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Insert Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Insert Results": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Visual Still (Nano Banana Pro)": {
+      "main": [
+        [
+          {
+            "node": "Extract Image Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Image Data": {
+      "main": [
+        [
+          {
+            "node": "Upload Visual Asset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Visual Asset": {
+      "main": [
+        [
+          {
+            "node": "Insert Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "settings": {}
 }
