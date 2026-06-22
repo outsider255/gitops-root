@@ -1,0 +1,115 @@
+{
+  "name": "analytics-weekly-report-skeleton",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "weeks", "weeksInterval": 1, "triggerAtDay": [1], "triggerAtHour": 9 }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Weekly Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analytics-trigger",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "2",
+      "name": "Manual Test Webhook",
+      "webhookId": "5c8e9f1a-22b4-4d6e-9a3f-7766554433aa",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 460]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "a1", "name": "stub_note", "type": "string", "value": "STUB: YouTube Data/Analytics API OAuth not yet configured -- this is simulated per-video metrics for skeleton testing only"},
+            {"id": "a2", "name": "videos", "type": "array", "value": "={{ [ {video_id: 'STUB_video_001', category: 'deep_focus', views: 1240, avg_retention_pct: 38, ctr_pct: 4.2}, {video_id: 'STUB_video_002', category: 'rainy_day', views: 860, avg_retention_pct: 44, ctr_pct: 3.6} ] }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "3",
+      "name": "STUB Fetch YouTube Analytics",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [470, 380]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "videos",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Split Out Videos",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [690, 380]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "b1", "name": "report_line", "type": "string", "value": "={{ $json.video_id + ' [' + $json.category + ']: ' + $json.views + ' views, ' + $json.avg_retention_pct + '% avg retention, ' + $json.ctr_pct + '% CTR' }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "5",
+      "name": "Format Report Line",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [910, 380]
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            { "fieldToAggregate": "report_line" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6",
+      "name": "Aggregate Report Lines",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1130, 380]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "c1", "name": "report", "type": "string", "value": "={{$json.report_line.join('\\n')}}"},
+            {"id": "c2", "name": "note", "type": "string", "value": "Read-only report per PIPELINE-ARCHITECTURE.md Section 1: usage-scoring write-back to libraries is explicitly out of scope for v1 (no auto-tuning loop) -- this only logs, it does not modify track_library / visual_loop_library"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "7",
+      "name": "Log Weekly Report",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1350, 380]
+    }
+  ],
+  "connections": {
+    "Weekly Schedule Trigger": {"main": [[{"node": "STUB Fetch YouTube Analytics", "type": "main", "index": 0}]]},
+    "Manual Test Webhook": {"main": [[{"node": "STUB Fetch YouTube Analytics", "type": "main", "index": 0}]]},
+    "STUB Fetch YouTube Analytics": {"main": [[{"node": "Split Out Videos", "type": "main", "index": 0}]]},
+    "Split Out Videos": {"main": [[{"node": "Format Report Line", "type": "main", "index": 0}]]},
+    "Format Report Line": {"main": [[{"node": "Aggregate Report Lines", "type": "main", "index": 0}]]},
+    "Aggregate Report Lines": {"main": [[{"node": "Log Weekly Report", "type": "main", "index": 0}]]}
+  },
+  "settings": {}
+}
