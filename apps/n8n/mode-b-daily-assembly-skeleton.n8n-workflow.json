@@ -1,0 +1,93 @@
+{
+  "name": "mode-b-daily-assembly-skeleton",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mode-b-trigger",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "webhookId": "662345d6-37ed-1019-ef66-ec7a921fec9d",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "a1", "name": "job_id", "type": "string", "value": "={{$now.format('yyyyLLddHHmmss')}}"},
+            {"id": "a2", "name": "video_id", "type": "string", "value": "={{$now.format('yyyy-LL-dd')}}-deep_focus-skeleton"},
+            {"id": "a3", "name": "category", "type": "string", "value": "deep_focus"},
+            {"id": "a4", "name": "track_ids", "type": "array", "value": "=[\"trk_dummy_001\"]"},
+            {"id": "a5", "name": "loop_ids", "type": "array", "value": "=[\"loop_dummy_001\", \"loop_dummy_002\"]"},
+            {"id": "a6", "name": "output_path", "type": "string", "value": "=/outbox/{{$now.format('yyyy-LL-dd')}}-deep_focus-skeleton.mp4"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Build Job Spec",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://render-service.render-service.svc.cluster.local/render",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { job_id: $json.job_id, video_id: $json.video_id, category: $json.category, track_ids: $json.track_ids, loop_ids: $json.loop_ids, overlay_config: { qr_url: \"https://growfocus.app/?utm_source=youtube&utm_medium=qr&utm_campaign=lofi&utm_content=\" + $json.video_id }, output_path: $json.output_path } }}",
+        "options": {}
+      },
+      "id": "3",
+      "name": "Dispatch Render",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "4",
+      "name": "Wait For Render",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://render-service.render-service.svc.cluster.local/status/{{$('Build Job Spec').item.json.job_id}}",
+        "options": {}
+      },
+      "id": "5",
+      "name": "Poll Render Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {},
+      "id": "6",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1350, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {"main": [[{"node": "Build Job Spec", "type": "main", "index": 0}]]},
+    "Build Job Spec": {"main": [[{"node": "Dispatch Render", "type": "main", "index": 0}]]},
+    "Dispatch Render": {"main": [[{"node": "Wait For Render", "type": "main", "index": 0}]]},
+    "Wait For Render": {"main": [[{"node": "Poll Render Status", "type": "main", "index": 0}]]},
+    "Poll Render Status": {"main": [[{"node": "Log Result", "type": "main", "index": 0}]]}
+  },
+  "settings": {}
+}
