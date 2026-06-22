@@ -1,0 +1,55 @@
+{
+  "name": "gemini-connectivity-test",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gemini-test-trigger",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Manual Test Webhook",
+      "webhookId": "3f6a8b1d-5c2e-4f9a-b7d3-9e1c2a4b5d6e",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "options": {}
+      },
+      "id": "2",
+      "name": "List Gemini Models",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 300],
+      "credentials": {
+        "googlePalmApi": { "id": "URXVDs4gil9L3d94", "name": "Gemini API" }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": { "assignments": [
+          { "id": "a1", "name": "model_count", "type": "number", "value": "={{$json.models.length}}" },
+          { "id": "a2", "name": "sample_models", "type": "array", "value": "={{$json.models.slice(0,5).map(m => m.name)}}" }
+        ] },
+        "options": {}
+      },
+      "id": "3",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [690, 300]
+    }
+  ],
+  "connections": {
+    "Manual Test Webhook": { "main": [[ { "node": "List Gemini Models", "type": "main", "index": 0 } ]] },
+    "List Gemini Models": { "main": [[ { "node": "Log Result", "type": "main", "index": 0 } ]] }
+  },
+  "settings": {}
+}
