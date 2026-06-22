@@ -52,13 +52,9 @@ data:
 
         if job.resume_url:
             try:
-                req = urllib.request.Request(
-                    job.resume_url,
-                    data=json.dumps({"job_id": job.job_id, "status": "completed", "output_path": job.output_path}).encode(),
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                urllib.request.urlopen(req, timeout=10)
+                # n8n's Wait-node webhook-resume endpoint only listens on GET by default;
+                # the resumed workflow re-fetches job state itself via /status, so no body is needed here.
+                urllib.request.urlopen(job.resume_url, timeout=10)
                 JOBS[job.job_id]["webhook_notified"] = True
             except Exception as e:
                 JOBS[job.job_id]["webhook_notified"] = False
