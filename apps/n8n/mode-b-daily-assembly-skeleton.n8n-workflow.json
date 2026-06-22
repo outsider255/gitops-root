@@ -13,18 +13,51 @@
       "webhookId": "662345d6-37ed-1019-ef66-ec7a921fec9d",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300]
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "a1", "name": "job_id", "type": "string", "value": "={{$now.format('yyyyLLddHHmmss')}}"},
-            {"id": "a2", "name": "video_id", "type": "string", "value": "={{$now.format('yyyy-LL-dd')}}-deep_focus-skeleton"},
-            {"id": "a3", "name": "category", "type": "string", "value": "deep_focus"},
-            {"id": "a4", "name": "track_ids", "type": "array", "value": "=[\"trk_dummy_001\"]"},
-            {"id": "a5", "name": "loop_ids", "type": "array", "value": "=[\"loop_dummy_001\", \"loop_dummy_002\"]"},
-            {"id": "a6", "name": "output_path", "type": "string", "value": "=/outbox/{{$now.format('yyyy-LL-dd')}}-deep_focus-skeleton.mp4"}
+            {
+              "id": "a1",
+              "name": "job_id",
+              "type": "string",
+              "value": "={{$now.format('yyyyLLddHHmmss')}}"
+            },
+            {
+              "id": "a2",
+              "name": "video_id",
+              "type": "string",
+              "value": "={{$now.format('yyyy-LL-dd')}}-deep_focus-skeleton"
+            },
+            {
+              "id": "a3",
+              "name": "category",
+              "type": "string",
+              "value": "deep_focus"
+            },
+            {
+              "id": "a4",
+              "name": "track_ids",
+              "type": "array",
+              "value": "=[\"trk_dummy_001\"]"
+            },
+            {
+              "id": "a5",
+              "name": "loop_ids",
+              "type": "array",
+              "value": "=[\"loop_dummy_001\", \"loop_dummy_002\"]"
+            },
+            {
+              "id": "a6",
+              "name": "output_path",
+              "type": "string",
+              "value": "=/outbox/{{$now.format('yyyy-LL-dd')}}-deep_focus-skeleton.mp4"
+            }
           ]
         },
         "options": {}
@@ -33,15 +66,33 @@
       "name": "Build Job Spec",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [470, 300]
+      "position": [
+        470,
+        300
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "b1", "name": "title", "type": "string", "value": "={{ ({deep_focus: 'Deep Focus Terrarium for Coding & Study 🍃 | Moss & Melodies Lofi', rainy_day: 'Rainy Windowsill Session for Relaxation 🌧️ | Moss & Melodies Lofi', night_focus: 'Bioluminescent Night Focus for Late Work 🌙 | Moss & Melodies Lofi', gentle_morning: 'Dawn Terrarium — Gentle Morning Focus ☕ | Moss & Melodies Lofi'})[$json.category] }}"},
-            {"id": "b2", "name": "hashtags", "type": "string", "value": "={{ ({deep_focus: '#codingmusic #deepfocus #productivity', rainy_day: '#rainsounds #cozyvibes #ambientmusic', night_focus: '#latenightstudy #nightowl #darkacademia', gentle_morning: '#morningroutine #softvibes #daystart'})[$json.category] }}"},
-            {"id": "b3", "name": "description", "type": "string", "value": "=[TODO: category-specific mood paragraph per BRAND-CONCEPT.md §3.4]\n\n🌿 [TODO: scene description sentence]\n\n🎵 [TODO: music description sentence]\n\n---\n🔗 Focus better with GrowFocus.app: https://growfocus.app/?utm_source=youtube&utm_medium=qr&utm_campaign=lofi&utm_content={{$json.video_id}}\n📌 Subscribe for more lofi focus sessions: [channel link]\n\n#lofi #studybeats #focusmusic #mossandmelodies {{ ({deep_focus: '#codingmusic #deepfocus #productivity', rainy_day: '#rainsounds #cozyvibes #ambientmusic', night_focus: '#latenightstudy #nightowl #darkacademia', gentle_morning: '#morningroutine #softvibes #daystart'})[$json.category] }}"}
+            {
+              "id": "b1",
+              "name": "title",
+              "type": "string",
+              "value": "={{ ({deep_focus: 'Deep Focus Terrarium for Coding & Study 🍃 | Moss & Melodies Lofi', rainy_day: 'Rainy Windowsill Session for Relaxation 🌧️ | Moss & Melodies Lofi', night_focus: 'Bioluminescent Night Focus for Late Work 🌙 | Moss & Melodies Lofi', gentle_morning: 'Dawn Terrarium — Gentle Morning Focus ☕ | Moss & Melodies Lofi'})[$json.category] }}"
+            },
+            {
+              "id": "b2",
+              "name": "hashtags",
+              "type": "string",
+              "value": "={{ ({deep_focus: '#codingmusic #deepfocus #productivity', rainy_day: '#rainsounds #cozyvibes #ambientmusic', night_focus: '#latenightstudy #nightowl #darkacademia', gentle_morning: '#morningroutine #softvibes #daystart'})[$json.category] }}"
+            },
+            {
+              "id": "b3",
+              "name": "description",
+              "type": "string",
+              "value": "=[TODO: category-specific mood paragraph per BRAND-CONCEPT.md §3.4]\n\n🌿 [TODO: scene description sentence]\n\n🎵 [TODO: music description sentence]\n\n---\n🔗 Focus better with GrowFocus.app: https://growfocus.app/?utm_source=youtube&utm_medium=qr&utm_campaign=lofi&utm_content={{$json.video_id}}\n📌 Subscribe for more lofi focus sessions: [channel link]\n\n#lofi #studybeats #focusmusic #mossandmelodies {{ ({deep_focus: '#codingmusic #deepfocus #productivity', rainy_day: '#rainsounds #cozyvibes #ambientmusic', night_focus: '#latenightstudy #nightowl #darkacademia', gentle_morning: '#morningroutine #softvibes #daystart'})[$json.category] }}"
+            }
           ]
         },
         "options": {}
@@ -50,7 +101,10 @@
       "name": "Build Title And Description",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [690, 480]
+      "position": [
+        690,
+        480
+      ]
     },
     {
       "parameters": {
@@ -65,7 +119,10 @@
       "name": "Dispatch Render",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [690, 300]
+      "position": [
+        690,
+        300
+      ]
     },
     {
       "parameters": {
@@ -76,7 +133,10 @@
       "name": "Wait For Render",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [910, 300]
+      "position": [
+        910,
+        300
+      ]
     },
     {
       "parameters": {
@@ -88,7 +148,10 @@
       "name": "Poll Render Status",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1130, 300]
+      "position": [
+        1130,
+        300
+      ]
     },
     {
       "parameters": {
@@ -100,16 +163,39 @@
       "name": "Merge Render And Metadata",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
-      "position": [1350, 400]
+      "position": [
+        1350,
+        400
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {"id": "c1", "name": "would_upload_title", "type": "string", "value": "={{$json.title}}"},
-            {"id": "c2", "name": "would_upload_description", "type": "string", "value": "={{$json.description}}"},
-            {"id": "c3", "name": "render_status", "type": "string", "value": "={{$json.status}}"},
-            {"id": "c4", "name": "output_path", "type": "string", "value": "={{$json.output_path}}"}
+            {
+              "id": "c1",
+              "name": "would_upload_title",
+              "type": "string",
+              "value": "={{$json.title}}"
+            },
+            {
+              "id": "c2",
+              "name": "would_upload_description",
+              "type": "string",
+              "value": "={{$json.description}}"
+            },
+            {
+              "id": "c3",
+              "name": "render_status",
+              "type": "string",
+              "value": "={{$json.status}}"
+            },
+            {
+              "id": "c4",
+              "name": "output_path",
+              "type": "string",
+              "value": "={{$json.output_path}}"
+            }
           ]
         },
         "options": {}
@@ -118,17 +204,405 @@
       "name": "Log Result",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [1570, 300]
+      "position": [
+        1570,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "g1",
+              "name": "youtube_upload_status",
+              "type": "string",
+              "value": "success"
+            },
+            {
+              "id": "g2",
+              "name": "youtube_video_url",
+              "type": "string",
+              "value": "=https://youtube.com/watch?v=STUB_1782158948993"
+            },
+            {
+              "id": "g3",
+              "name": "stub_note",
+              "type": "string",
+              "value": "STUB: YouTube OAuth not yet configured -- simulated success for skeleton testing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "11",
+      "name": "STUB Upload To YouTube",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1790,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond1",
+              "leftValue": "={{$json.youtube_upload_status}}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "12",
+      "name": "IF Upload Succeeded",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2010,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "h1",
+              "name": "onedrive_copy_status",
+              "type": "string",
+              "value": "success"
+            },
+            {
+              "id": "h2",
+              "name": "stub_note",
+              "type": "string",
+              "value": "STUB: Microsoft OneDrive OAuth2 consent not yet completed in n8n UI -- simulated success for skeleton testing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "13",
+      "name": "STUB Copy To OneDrive",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2230,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond2",
+              "leftValue": "={{$json.onedrive_copy_status}}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "14",
+      "name": "IF OneDrive Copy Succeeded",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2450,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=http://render-service.render-service.svc.cluster.local/outbox/{{$('Build Job Spec').item.json.job_id}}",
+        "options": {}
+      },
+      "id": "15",
+      "name": "Delete From Outbox",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2670,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "i1",
+              "name": "pipeline_status",
+              "type": "string",
+              "value": "completed_and_cleaned_up"
+            },
+            {
+              "id": "i2",
+              "name": "outbox_deleted",
+              "type": "boolean",
+              "value": "={{$json.deleted}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "16",
+      "name": "Log Cleanup Complete",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2890,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "j1",
+              "name": "pipeline_status",
+              "type": "string",
+              "value": "failed_youtube_upload"
+            },
+            {
+              "id": "j2",
+              "name": "note",
+              "type": "string",
+              "value": "OneDrive copy + outbox delete skipped: never delete on a failed upload (safety constraint, PIPELINE-ARCHITECTURE.md)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "17",
+      "name": "Log Upload Failure",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2230,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "k1",
+              "name": "pipeline_status",
+              "type": "string",
+              "value": "failed_onedrive_copy"
+            },
+            {
+              "id": "k2",
+              "name": "note",
+              "type": "string",
+              "value": "Outbox delete skipped: OneDrive copy did not succeed -- file retained on server (safety constraint, PIPELINE-ARCHITECTURE.md)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "18",
+      "name": "Log OneDrive Failure",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2670,
+        300
+      ]
     }
   ],
   "connections": {
-    "Webhook Trigger": {"main": [[{"node": "Build Job Spec", "type": "main", "index": 0}]]},
-    "Build Job Spec": {"main": [[{"node": "Dispatch Render", "type": "main", "index": 0}, {"node": "Build Title And Description", "type": "main", "index": 0}]]},
-    "Dispatch Render": {"main": [[{"node": "Wait For Render", "type": "main", "index": 0}]]},
-    "Wait For Render": {"main": [[{"node": "Poll Render Status", "type": "main", "index": 0}]]},
-    "Poll Render Status": {"main": [[{"node": "Merge Render And Metadata", "type": "main", "index": 0}]]},
-    "Build Title And Description": {"main": [[{"node": "Merge Render And Metadata", "type": "main", "index": 1}]]},
-    "Merge Render And Metadata": {"main": [[{"node": "Log Result", "type": "main", "index": 0}]]}
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Job Spec",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Job Spec": {
+      "main": [
+        [
+          {
+            "node": "Dispatch Render",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Title And Description",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch Render": {
+      "main": [
+        [
+          {
+            "node": "Wait For Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For Render": {
+      "main": [
+        [
+          {
+            "node": "Poll Render Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poll Render Status": {
+      "main": [
+        [
+          {
+            "node": "Merge Render And Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Title And Description": {
+      "main": [
+        [
+          {
+            "node": "Merge Render And Metadata",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Render And Metadata": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Result": {
+      "main": [
+        [
+          {
+            "node": "STUB Upload To YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STUB Upload To YouTube": {
+      "main": [
+        [
+          {
+            "node": "IF Upload Succeeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Upload Succeeded": {
+      "main": [
+        [
+          {
+            "node": "STUB Copy To OneDrive",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Upload Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STUB Copy To OneDrive": {
+      "main": [
+        [
+          {
+            "node": "IF OneDrive Copy Succeeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF OneDrive Copy Succeeded": {
+      "main": [
+        [
+          {
+            "node": "Delete From Outbox",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log OneDrive Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete From Outbox": {
+      "main": [
+        [
+          {
+            "node": "Log Cleanup Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "settings": {}
 }
