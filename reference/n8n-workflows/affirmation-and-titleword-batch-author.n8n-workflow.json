@@ -1,0 +1,456 @@
+{
+  "name": "affirmation-and-titleword-batch-author",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "batch-author-trigger",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Manual Test Webhook",
+      "webhookId": "7d4e8f2c-9a1b-4c3d-8e5f-1a2b3c4d5e6f",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "monthsInterval": 1,
+              "triggerAtDayOfMonth": 1,
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "2",
+      "name": "Monthly Refresh Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: \"openai/gpt-4o-mini\", messages: [ { role: \"system\", content: \"You write short, calming, nature-themed affirmations for a lofi ambient YouTube channel called Moss & Melodies Lofi, set in a terrarium. Tone: gentle, observational, botanical -- NOT clinical or self-help language. Good examples: 'the moss grows one cell at a time -- so does your work', 'rain falls. you focus. that's enough.', 'a tiny mushroom is proud of you'. Avoid phrases like 'you are enough' or 'believe in yourself'.\" }, { role: \"user\", content: \"Generate exactly 25 new affirmations in this style, each under 12 words, no duplicates of the examples given. Return ONLY valid JSON in this exact shape with no other text: {\\\"affirmations\\\": [\\\"...\\\", \\\"...\\\"]}\" } ] } }}",
+        "options": {},
+        "nodeCredentialType": "openRouterApi"
+      },
+      "id": "3",
+      "name": "Call OpenRouter Affirmations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        470,
+        220
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "so0et0nwHAe4sSBv",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: \"openai/gpt-4o-mini\", messages: [ { role: \"system\", content: \"You generate short scene/activity phrases for YouTube video titles for a lofi ambient channel called Moss & Melodies Lofi, set in a terrarium. The title formula is: [Mood Adjective] [Scene] for [Activity] [Emoji] | Moss & Melodies Lofi. You are generating candidate phrases for the [Scene] for [Activity] portion, so daily titles vary instead of repeating.\" }, { role: \"user\", content: \"Generate 8 short scene/activity phrase candidates (2-5 words each, title case, no emoji) for EACH of these 4 categories: deep_focus, rainy_day, night_focus, gentle_morning. Example for deep_focus: 'Terrarium for Coding & Study'. Return ONLY valid JSON in this exact shape with no other text, all 32 entries in one array: {\\\"title_words\\\": [{\\\"category\\\": \\\"deep_focus\\\", \\\"word\\\": \\\"...\\\"}]}\" } ] } }}",
+        "options": {},
+        "nodeCredentialType": "openRouterApi"
+      },
+      "id": "4",
+      "name": "Call OpenRouter Title Words",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        470,
+        540
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "so0et0nwHAe4sSBv",
+          "name": "OpenRouter"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "affirmations",
+              "type": "array",
+              "value": "={{ JSON.parse($json.choices[0].message.content).affirmations }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5",
+      "name": "Parse Affirmations",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        690,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "title_words",
+              "type": "array",
+              "value": "={{ JSON.parse($json.choices[0].message.content).title_words }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6",
+      "name": "Parse Title Words",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        690,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "affirmations",
+        "options": {}
+      },
+      "id": "7",
+      "name": "Split Out Affirmations",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        910,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "title_words",
+        "options": {}
+      },
+      "id": "8",
+      "name": "Split Out Title Words",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        910,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://asset-library-service.asset-library.svc.cluster.local/affirmations",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { text: $json.affirmations } }}",
+        "options": {}
+      },
+      "id": "9",
+      "name": "Insert Affirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1130,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://asset-library-service.asset-library.svc.cluster.local/title-words",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { category: $json.category, word: $json.word } }}",
+        "options": {}
+      },
+      "id": "10",
+      "name": "Insert Title Word",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1130,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "id",
+              "renameField": true,
+              "outputFieldName": "affirmation_ids"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "11",
+      "name": "Aggregate Affirmation IDs",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1350,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "id",
+              "renameField": true,
+              "outputFieldName": "title_word_ids"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "12",
+      "name": "Aggregate Title Word IDs",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1350,
+        540
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "13",
+      "name": "Merge Counts",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1570,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "affirmations_inserted",
+              "type": "number",
+              "value": "={{$json.affirmation_ids.length}}"
+            },
+            {
+              "id": "c2",
+              "name": "note",
+              "type": "string",
+              "value": "Real OpenRouter LLM batch-authoring run -- per PIPELINE-ARCHITECTURE.md Section 5, this is the ONLY place an LLM enters the content-variation system, run once per refresh cycle (not per video)"
+            },
+            {
+              "id": "c3",
+              "name": "title_words_inserted",
+              "type": "number",
+              "value": "={{$json.title_word_ids.length}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "14",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1790,
+        380
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Test Webhook": {
+      "main": [
+        [
+          {
+            "node": "Call OpenRouter Affirmations",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call OpenRouter Title Words",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monthly Refresh Schedule": {
+      "main": [
+        [
+          {
+            "node": "Call OpenRouter Affirmations",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call OpenRouter Title Words",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenRouter Affirmations": {
+      "main": [
+        [
+          {
+            "node": "Parse Affirmations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenRouter Title Words": {
+      "main": [
+        [
+          {
+            "node": "Parse Title Words",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Affirmations": {
+      "main": [
+        [
+          {
+            "node": "Split Out Affirmations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Title Words": {
+      "main": [
+        [
+          {
+            "node": "Split Out Title Words",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Affirmations": {
+      "main": [
+        [
+          {
+            "node": "Insert Affirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out Title Words": {
+      "main": [
+        [
+          {
+            "node": "Insert Title Word",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Affirmation": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Affirmation IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Title Word": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Title Word IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Affirmation IDs": {
+      "main": [
+        [
+          {
+            "node": "Merge Counts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Title Word IDs": {
+      "main": [
+        [
+          {
+            "node": "Merge Counts",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Counts": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}
