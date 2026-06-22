@@ -33,6 +33,25 @@ data:
       qa_gates_passed TEXT NOT NULL DEFAULT '{}',
       ssim_vs_library REAL
     );
+
+    CREATE TABLE IF NOT EXISTS affirmation_bank (
+      id TEXT PRIMARY KEY,
+      text TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      use_count INTEGER NOT NULL DEFAULT 0,
+      last_used_at TEXT,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','retired'))
+    );
+
+    CREATE TABLE IF NOT EXISTS title_word_bank (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL CHECK (category IN ('deep_focus','rainy_day','night_focus','gentle_morning')),
+      word TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      use_count INTEGER NOT NULL DEFAULT 0,
+      last_used_at TEXT,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','retired'))
+    );
   seed.sql: |
     INSERT OR IGNORE INTO track_library
       (id, file_path, duration_s, category, mood_tags, bpm, status, qa_passed)
