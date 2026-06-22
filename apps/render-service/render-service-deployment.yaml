@@ -30,9 +30,10 @@ spec:
             - containerPort: 80
           env:
             - {name: MODULE_NAME, value: 'main'}
+            - {name: WEB_CONCURRENCY, value: '1'}
           resources:
-            requests: {cpu: '100m', memory: '128Mi'}
-            limits: {cpu: '500m', memory: '256Mi'}
+            requests: {cpu: '200m', memory: '256Mi'}
+            limits: {cpu: '500m', memory: '384Mi'}
           volumeMounts:
             - name: app-code
               mountPath: /app/main.py
@@ -41,10 +42,14 @@ spec:
               mountPath: /outbox
           readinessProbe:
             httpGet: {path: /healthz, port: 80}
-            initialDelaySeconds: 5
+            initialDelaySeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
           livenessProbe:
             httpGet: {path: /healthz, port: 80}
-            initialDelaySeconds: 10
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
       volumes:
         - name: app-code
           configMap:
