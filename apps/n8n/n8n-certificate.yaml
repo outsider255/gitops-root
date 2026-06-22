@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: n8n-tls
+  namespace: n8n
+spec:
+  secretName: n8n-tls
+  dnsNames:
+    - ns3098488.ip-54-36-172.eu
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer

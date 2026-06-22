@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: n8n
+  namespace: n8n
+spec:
+  entryPoints:
+    - n8n
+  routes:
+    - match: Host(`ns3098488.ip-54-36-172.eu`)
+      kind: Rule
+      services:
+        - name: n8n
+          port: 80
+  tls:
+    secretName: n8n-tls
