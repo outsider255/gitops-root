@@ -15,10 +15,12 @@ spec:
     spec:
       containers:
         - name: n8n
-          image: n8nio/n8n:1.123.60
+          image: n8nio/n8n:2.26.9
           ports:
             - containerPort: 5678
           env:
+            - name: N8N_RUNNERS_ENABLED
+              value: 'false'
             - name: GENERIC_TIMEZONE
               value: 'Europe/Warsaw'
             - name: N8N_PROTOCOL
