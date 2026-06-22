@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asset-library-service
+  namespace: asset-library
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: asset-library-service}
+  template:
+    metadata:
+      labels: {app: asset-library-service}
+    spec:
+      containers:
+        - name: asset-library-service
+          image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
+          ports:
+            - containerPort: 80
+          env:
+            - {name: MODULE_NAME, value: 'main'}
+            - {name: WEB_CONCURRENCY, value: '1'}
+          resources:
+            requests: {cpu: '100m', memory: '128Mi'}
+            limits: {cpu: '300m', memory: '256Mi'}
+          volumeMounts:
+            - name: app-code
+              mountPath: /app/main.py
+              subPath: main.py
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet: {path: /healthz, port: 80}
+            initialDelaySeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /healthz, port: 80}
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+      volumes:
+        - name: app-code
+          configMap:
+            name: asset-library-service-app
+        - name: data
+          persistentVolumeClaim:
+            claimName: asset-library-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asset-library-service
+  namespace: asset-library
+spec:
+  type: ClusterIP
+  selector: {app: asset-library-service}
+  ports:
+    - {port: 80, targetPort: 80}

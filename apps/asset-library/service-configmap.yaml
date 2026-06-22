@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: asset-library-service-app
+  namespace: asset-library
+data:
+  main.py: |
+    import json
+    import sqlite3
+    import uuid
+    from typing import Optional
+
+    from fastapi import FastAPI
+    from pydantic import BaseModel
+
+    app = FastAPI()
+    DB_PATH = "/data/library.db"
+
+    def get_conn():
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    class TrackIn(BaseModel):
+        file_path: str
+        duration_s: float
+        category: str
+        mood_tags: list[str] = []
+        bpm: Optional[int] = None
+        qa_passed: bool = False
+
+    class LoopIn(BaseModel):
+        file_path: str
+        duration_s: float
+        category: str
+        scene_tags: list[str] = []
+        qa_gates_passed: dict = {}
+
+    @app.post("/tracks", status_code=201)
+    def create_track(track: TrackIn):
+        track_id = f"trk_{uuid.uuid4().hex[:10]}"
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO track_library (id, file_path, duration_s, category, mood_tags, bpm, status, qa_passed) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'active', ?)",
+            (track_id, track.file_path, track.duration_s, track.category, json.dumps(track.mood_tags), track.bpm, int(track.qa_passed)),
+        )
+        conn.commit()
+        conn.close()
+        return {"id": track_id}
+
+    @app.get("/tracks")
+    def list_tracks(category: Optional[str] = None, status: str = "active"):
+        conn = get_conn()
+        query = "SELECT * FROM track_library WHERE status = ?"
+        params = [status]
+        if category:
+            query += " AND category = ?"
+            params.append(category)
+        rows = conn.execute(query, params).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    @app.post("/loops", status_code=201)
+    def create_loop(loop: LoopIn):
+        loop_id = f"loop_{uuid.uuid4().hex[:10]}"
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO visual_loop_library (id, file_path, duration_s, category, scene_tags, status, qa_gates_passed) "
+            "VALUES (?, ?, ?, ?, ?, 'active', ?)",
+            (loop_id, loop.file_path, loop.duration_s, loop.category, json.dumps(loop.scene_tags), json.dumps(loop.qa_gates_passed)),
+        )
+        conn.commit()
+        conn.close()
+        return {"id": loop_id}
+
+    @app.get("/loops")
+    def list_loops(category: Optional[str] = None, status: str = "active"):
+        conn = get_conn()
+        query = "SELECT * FROM visual_loop_library WHERE status = ?"
+        params = [status]
+        if category:
+            query += " AND category = ?"
+            params.append(category)
+        rows = conn.execute(query, params).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    @app.get("/healthz")
+    def healthz():
+        return {"ok": True}
