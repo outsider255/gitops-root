@@ -37,6 +37,23 @@
     },
     {
       "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "b1", "name": "title", "type": "string", "value": "={{ ({deep_focus: 'Deep Focus Terrarium for Coding & Study 🍃 | Moss & Melodies Lofi', rainy_day: 'Rainy Windowsill Session for Relaxation 🌧️ | Moss & Melodies Lofi', night_focus: 'Bioluminescent Night Focus for Late Work 🌙 | Moss & Melodies Lofi', gentle_morning: 'Dawn Terrarium — Gentle Morning Focus ☕ | Moss & Melodies Lofi'})[$json.category] }}"},
+            {"id": "b2", "name": "hashtags", "type": "string", "value": "={{ ({deep_focus: '#codingmusic #deepfocus #productivity', rainy_day: '#rainsounds #cozyvibes #ambientmusic', night_focus: '#latenightstudy #nightowl #darkacademia', gentle_morning: '#morningroutine #softvibes #daystart'})[$json.category] }}"},
+            {"id": "b3", "name": "description", "type": "string", "value": "=[TODO: category-specific mood paragraph per BRAND-CONCEPT.md §3.4]\n\n🌿 [TODO: scene description sentence]\n\n🎵 [TODO: music description sentence]\n\n---\n🔗 Focus better with GrowFocus.app: https://growfocus.app/?utm_source=youtube&utm_medium=qr&utm_campaign=lofi&utm_content={{$json.video_id}}\n📌 Subscribe for more lofi focus sessions: [channel link]\n\n#lofi #studybeats #focusmusic #mossandmelodies {{ ({deep_focus: '#codingmusic #deepfocus #productivity', rainy_day: '#rainsounds #cozyvibes #ambientmusic', night_focus: '#latenightstudy #nightowl #darkacademia', gentle_morning: '#morningroutine #softvibes #daystart'})[$json.category] }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "7",
+      "name": "Build Title And Description",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [690, 480]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "http://render-service.render-service.svc.cluster.local/render",
         "sendBody": true,
@@ -74,20 +91,44 @@
       "position": [1130, 300]
     },
     {
-      "parameters": {},
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "8",
+      "name": "Merge Render And Metadata",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [1350, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "c1", "name": "would_upload_title", "type": "string", "value": "={{$json.title}}"},
+            {"id": "c2", "name": "would_upload_description", "type": "string", "value": "={{$json.description}}"},
+            {"id": "c3", "name": "render_status", "type": "string", "value": "={{$json.status}}"},
+            {"id": "c4", "name": "output_path", "type": "string", "value": "={{$json.output_path}}"}
+          ]
+        },
+        "options": {}
+      },
       "id": "6",
       "name": "Log Result",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [1350, 300]
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1570, 300]
     }
   ],
   "connections": {
     "Webhook Trigger": {"main": [[{"node": "Build Job Spec", "type": "main", "index": 0}]]},
-    "Build Job Spec": {"main": [[{"node": "Dispatch Render", "type": "main", "index": 0}]]},
+    "Build Job Spec": {"main": [[{"node": "Dispatch Render", "type": "main", "index": 0}, {"node": "Build Title And Description", "type": "main", "index": 0}]]},
     "Dispatch Render": {"main": [[{"node": "Wait For Render", "type": "main", "index": 0}]]},
     "Wait For Render": {"main": [[{"node": "Poll Render Status", "type": "main", "index": 0}]]},
-    "Poll Render Status": {"main": [[{"node": "Log Result", "type": "main", "index": 0}]]}
+    "Poll Render Status": {"main": [[{"node": "Merge Render And Metadata", "type": "main", "index": 0}]]},
+    "Build Title And Description": {"main": [[{"node": "Merge Render And Metadata", "type": "main", "index": 1}]]},
+    "Merge Render And Metadata": {"main": [[{"node": "Log Result", "type": "main", "index": 0}]]}
   },
   "settings": {}
 }
