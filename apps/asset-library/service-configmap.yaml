@@ -86,6 +86,56 @@ data:
         conn.close()
         return [dict(r) for r in rows]
 
+    class AffirmationIn(BaseModel):
+        text: str
+
+    class TitleWordIn(BaseModel):
+        category: str
+        word: str
+
+    @app.post("/affirmations", status_code=201)
+    def create_affirmation(item: AffirmationIn):
+        item_id = f"aff_{uuid.uuid4().hex[:10]}"
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO affirmation_bank (id, text, status) VALUES (?, ?, 'active')",
+            (item_id, item.text),
+        )
+        conn.commit()
+        conn.close()
+        return {"id": item_id}
+
+    @app.get("/affirmations")
+    def list_affirmations(status: str = "active"):
+        conn = get_conn()
+        rows = conn.execute("SELECT * FROM affirmation_bank WHERE status = ?", (status,)).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    @app.post("/title-words", status_code=201)
+    def create_title_word(item: TitleWordIn):
+        item_id = f"tw_{uuid.uuid4().hex[:10]}"
+        conn = get_conn()
+        conn.execute(
+            "INSERT INTO title_word_bank (id, category, word, status) VALUES (?, ?, ?, 'active')",
+            (item_id, item.category, item.word),
+        )
+        conn.commit()
+        conn.close()
+        return {"id": item_id}
+
+    @app.get("/title-words")
+    def list_title_words(category: Optional[str] = None, status: str = "active"):
+        conn = get_conn()
+        query = "SELECT * FROM title_word_bank WHERE status = ?"
+        params = [status]
+        if category:
+            query += " AND category = ?"
+            params.append(category)
+        rows = conn.execute(query, params).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
     @app.get("/healthz")
     def healthz():
         return {"ok": True}
