@@ -1,0 +1,177 @@
+{
+  "name": "mode-a-batch-generation-skeleton",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mode-a-trigger",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook Trigger",
+      "webhookId": "9f1c2a3e-44b1-4a2d-8f0a-1234567890ab",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "a1", "name": "category", "type": "string", "value": "={{ $json.body && $json.body.category ? $json.body.category : 'deep_focus' }}"},
+            {"id": "a2", "name": "batch_size", "type": "number", "value": "={{ $json.body && $json.body.batch_size ? $json.body.batch_size : 1 }}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Build Batch Spec",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "b1", "name": "track_file_path", "type": "string", "value": "=/outbox/dummy-assets/trk_{{$now.format('yyyyLLddHHmmss')}}.mp3"},
+            {"id": "b2", "name": "track_duration_s", "type": "number", "value": 240},
+            {"id": "b3", "name": "track_category", "type": "string", "value": "={{$json.category}}"},
+            {"id": "b4", "name": "track_mood_tags", "type": "array", "value": "=[\"warm_pad\", \"soft_vinyl\"]"},
+            {"id": "b5", "name": "track_bpm", "type": "number", "value": 75},
+            {"id": "b6", "name": "track_qa_passed", "type": "boolean", "value": true},
+            {"id": "b7", "name": "stub_note", "type": "string", "value": "STUB: fal.ai ACE-Step API key not yet provisioned -- placeholder metadata only, no real audio generated"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "3",
+      "name": "STUB Generate Track (fal.ai ACE-Step)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "c1", "name": "loop_file_path", "type": "string", "value": "=/outbox/dummy-assets/loop_{{$now.format('yyyyLLddHHmmss')}}.mp4"},
+            {"id": "c2", "name": "loop_duration_s", "type": "number", "value": 8},
+            {"id": "c3", "name": "loop_category", "type": "string", "value": "={{$json.category}}"},
+            {"id": "c4", "name": "loop_scene_tags", "type": "array", "value": "=[\"center\", \"mascot_reading\"]"},
+            {"id": "c5", "name": "loop_qa_gates_passed", "type": "object", "value": "={{ {g1_seam: true, g2_pop: true, g3_distinct: true, g4_motion: true} }}"},
+            {"id": "c6", "name": "stub_note", "type": "string", "value": "STUB: Veo 3.1 Lite / Nano Banana Pro not yet wired (Google Cloud billing not provisioned) -- placeholder metadata only, no real video generated"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "4",
+      "name": "STUB Generate Visual Loop (Veo 3.1 Lite)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [690, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://asset-library-service.asset-library.svc.cluster.local/tracks",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { file_path: $json.track_file_path, duration_s: $json.track_duration_s, category: $json.track_category, mood_tags: $json.track_mood_tags, bpm: $json.track_bpm, qa_passed: $json.track_qa_passed } }}",
+        "options": {}
+      },
+      "id": "5",
+      "name": "Insert Track",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://asset-library-service.asset-library.svc.cluster.local/loops",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { file_path: $json.loop_file_path, duration_s: $json.loop_duration_s, category: $json.loop_category, scene_tags: $json.loop_scene_tags, qa_gates_passed: $json.loop_qa_gates_passed } }}",
+        "options": {}
+      },
+      "id": "6",
+      "name": "Insert Loop",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [910, 420]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "d1", "name": "track_id", "type": "string", "value": "={{$json.id}}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "7",
+      "name": "Track Insert Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1130, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "e1", "name": "loop_id", "type": "string", "value": "={{$json.id}}"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "8",
+      "name": "Loop Insert Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1130, 420]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "9",
+      "name": "Merge Insert Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [1350, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id": "f1", "name": "inserted_track_id", "type": "string", "value": "={{$json.track_id}}"},
+            {"id": "f2", "name": "inserted_loop_id", "type": "string", "value": "={{$json.loop_id}}"},
+            {"id": "f3", "name": "note", "type": "string", "value": "Mode A skeleton: generation calls are STUBBED (no fal.ai / Veo credentials yet) but library inserts are REAL writes to the asset-library SQLite DB via asset-library-service"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "10",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1570, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {"main": [[{"node": "Build Batch Spec", "type": "main", "index": 0}]]},
+    "Build Batch Spec": {"main": [[{"node": "STUB Generate Track (fal.ai ACE-Step)", "type": "main", "index": 0}, {"node": "STUB Generate Visual Loop (Veo 3.1 Lite)", "type": "main", "index": 0}]]},
+    "STUB Generate Track (fal.ai ACE-Step)": {"main": [[{"node": "Insert Track", "type": "main", "index": 0}]]},
+    "STUB Generate Visual Loop (Veo 3.1 Lite)": {"main": [[{"node": "Insert Loop", "type": "main", "index": 0}]]},
+    "Insert Track": {"main": [[{"node": "Track Insert Result", "type": "main", "index": 0}]]},
+    "Insert Loop": {"main": [[{"node": "Loop Insert Result", "type": "main", "index": 0}]]},
+    "Track Insert Result": {"main": [[{"node": "Merge Insert Results", "type": "main", "index": 0}]]},
+    "Loop Insert Result": {"main": [[{"node": "Merge Insert Results", "type": "main", "index": 1}]]},
+    "Merge Insert Results": {"main": [[{"node": "Log Result", "type": "main", "index": 0}]]}
+  },
+  "settings": {}
+}
