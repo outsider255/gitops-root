@@ -112,7 +112,7 @@
         "url": "http://render-service.render-service.svc.cluster.local/render",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { job_id: $json.job_id, video_id: $json.video_id, category: $json.category, track_ids: $json.track_ids, loop_ids: $json.loop_ids, overlay_config: { qr_url: \"https://growfocus.app/?utm_source=youtube&utm_medium=qr&utm_campaign=lofi&utm_content=\" + $json.video_id }, output_path: $json.output_path } }}",
+        "jsonBody": "={{ { job_id: $json.job_id, video_id: $json.video_id, category: $json.category, track_ids: $json.track_ids, loop_ids: $json.loop_ids, overlay_config: { qr_url: \"https://growfocus.app/?utm_source=youtube&utm_medium=qr&utm_campaign=lofi&utm_content=\" + $json.video_id }, output_path: $json.output_path, resume_url: $execution.resumeUrl } }}",
         "options": {}
       },
       "id": "3",
@@ -126,8 +126,12 @@
     },
     {
       "parameters": {
-        "amount": 5,
-        "unit": "seconds"
+        "resume": "webhook",
+        "limitWaitTime": true,
+        "limitType": "afterTimeInterval",
+        "resumeAmount": 60,
+        "resumeUnit": "seconds",
+        "options": {}
       },
       "id": "4",
       "name": "Wait For Render",
