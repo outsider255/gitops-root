@@ -1,4 +1,3 @@
-# n8n-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,14 +21,33 @@ spec:
           env:
             - name: GENERIC_TIMEZONE
               value: 'Europe/Warsaw'
+            - name: N8N_PROTOCOL
+              value: 'https'
+            - name: N8N_HOST
+              value: 'ns3098488.ip-54-36-172.eu'
+            - name: N8N_PATH
+              value: '/n8n/'
+            - name: WEBHOOK_URL
+              value: 'https://ns3098488.ip-54-36-172.eu/n8n/'
             - name: N8N_BASIC_AUTH_ACTIVE
               value: 'true'
             - name: N8N_BASIC_AUTH_USER
-              value: 'admin'
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-auth
+                  key: username
             - name: N8N_BASIC_AUTH_PASSWORD
-              value: 'supersecurepassword'
-            - name: WEBHOOK_URL
-              value: https://n8n.gghub.ovh
+              valueFrom:
+                secretKeyRef:
+                  name: n8n-auth
+                  key: password
+          resources:
+            requests:
+              cpu: '500m'
+              memory: '512Mi'
+            limits:
+              cpu: '1'
+              memory: '1Gi'
           volumeMounts:
             - name: n8n-storage
               mountPath: /home/node/.n8n

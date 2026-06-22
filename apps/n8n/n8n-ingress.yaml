@@ -6,15 +6,13 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: 'letsencrypt-prod'
     traefik.ingress.kubernetes.io/router.entrypoints: 'websecure'
-    traefik.ingress.kubernetes.io/router.tls: 'true'
-    traefik.ingress.kubernetes.io/redirect-entry-point: https
 spec:
   ingressClassName: traefik
   rules:
-    - host: n8n.gghub.ovh
+    - host: ns3098488.ip-54-36-172.eu
       http:
         paths:
-          - path: /
+          - path: /n8n
             pathType: Prefix
             backend:
               service:
@@ -23,5 +21,5 @@ spec:
                   number: 80
   tls:
     - hosts:
-        - n8n.gghub.ovh
+        - ns3098488.ip-54-36-172.eu
       secretName: n8n-tls

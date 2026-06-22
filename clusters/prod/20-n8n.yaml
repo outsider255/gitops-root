@@ -6,7 +6,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: business
+  project: default
   destination:
     server: https://kubernetes.default.svc
     namespace: n8n
@@ -18,5 +18,5 @@ spec:
     automated:
       prune: true
       selfHeal: true
-  syncOptions:
-    - SyncWave=4
+    syncOptions:
+      - CreateNamespace=true
