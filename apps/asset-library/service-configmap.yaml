@@ -5,16 +5,19 @@ metadata:
   namespace: asset-library
 data:
   main.py: |
+    import base64
     import json
+    import os
     import sqlite3
     import uuid
     from typing import Optional
 
-    from fastapi import FastAPI
+    from fastapi import FastAPI, HTTPException
     from pydantic import BaseModel
 
     app = FastAPI()
     DB_PATH = "/data/library.db"
+    ASSETS_DIR = "/data/visual-assets"
 
     def get_conn():
         conn = sqlite3.connect(DB_PATH)
@@ -135,6 +138,25 @@ data:
         rows = conn.execute(query, params).fetchall()
         conn.close()
         return [dict(r) for r in rows]
+
+    class AssetUploadIn(BaseModel):
+        filename: str
+        content_base64: str
+
+    @app.post("/visual-assets/upload", status_code=201)
+    def upload_visual_asset(item: AssetUploadIn):
+        safe_name = os.path.basename(item.filename)
+        if not safe_name or safe_name in (".", ".."):
+            raise HTTPException(status_code=400, detail="invalid filename")
+        os.makedirs(ASSETS_DIR, exist_ok=True)
+        target = os.path.join(ASSETS_DIR, safe_name)
+        try:
+            data = base64.b64decode(item.content_base64)
+        except Exception:
+            raise HTTPException(status_code=400, detail="content_base64 is not valid base64")
+        with open(target, "wb") as f:
+            f.write(data)
+        return {"file_path": target, "bytes_written": len(data)}
 
     @app.get("/healthz")
     def healthz():
