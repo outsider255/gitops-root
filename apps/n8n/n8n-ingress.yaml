@@ -5,14 +5,14 @@ metadata:
   namespace: n8n
   annotations:
     cert-manager.io/cluster-issuer: 'letsencrypt-prod'
-    traefik.ingress.kubernetes.io/router.entrypoints: 'websecure'
+    traefik.ingress.kubernetes.io/router.entrypoints: 'n8n'
 spec:
   ingressClassName: traefik
   rules:
     - host: ns3098488.ip-54-36-172.eu
       http:
         paths:
-          - path: /n8n
+          - path: /
             pathType: Prefix
             backend:
               service:

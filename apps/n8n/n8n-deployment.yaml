@@ -25,10 +25,10 @@ spec:
               value: 'https'
             - name: N8N_HOST
               value: 'ns3098488.ip-54-36-172.eu'
-            - name: N8N_PATH
-              value: '/n8n/'
+            - name: N8N_PORT
+              value: '5678'
             - name: WEBHOOK_URL
-              value: 'https://ns3098488.ip-54-36-172.eu/n8n/'
+              value: 'https://ns3098488.ip-54-36-172.eu:8443/'
             - name: N8N_BASIC_AUTH_ACTIVE
               value: 'true'
             - name: N8N_BASIC_AUTH_USER
