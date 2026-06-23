@@ -78,7 +78,7 @@ def test_build_assembly_job_spec_uses_render_service_image():
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v2"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v3"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets():
@@ -115,7 +115,7 @@ def test_build_motion_convert_job_spec_uses_render_service_image():
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v2"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v3"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():
