@@ -43,6 +43,7 @@ async def render(job: JobSpec, background_tasks: BackgroundTasks):
     os.makedirs(os.path.dirname(real_target), exist_ok=True)
 
     job_dispatch.JOBS[job.job_id] = {"status": "accepted", "output_path": None}
+    job_dispatch.JOBS[job.job_id]["job_name"] = f"assemble-{job.job_id}"
     try:
         await job_dispatch.dispatch_assembly_job(job)
     except job_dispatch.ApiException as e:
@@ -61,6 +62,7 @@ async def process_motion_convert(req: MotionConvertRequest, background_tasks: Ba
     output_path = f"/assets/loops/{req.loop_id}.mp4"
     job_dispatch.JOBS[job_id] = {"status": "accepted", "output_path": None}
     job_name = await job_dispatch.dispatch_motion_convert_job(job_id, req.still_path, output_path)
+    job_dispatch.JOBS[job_id]["job_name"] = job_name
     job_dispatch.JOBS[job_id]["status"] = "queued"
     background_tasks.add_task(job_dispatch.watch_motion_convert_job, job_id, output_path)
     return {"job_id": job_id, "job_name": job_name}
@@ -71,7 +73,7 @@ async def status(job_id: str):
     if job_id not in job_dispatch.JOBS:
         raise HTTPException(status_code=404, detail="unknown job_id")
 
-    job_name = f"assemble-{job_id}"
+    job_name = job_dispatch.JOBS[job_id]["job_name"]
     try:
         from fastapi.concurrency import run_in_threadpool
         phase = await run_in_threadpool(job_dispatch.get_job_phase, job_name)
