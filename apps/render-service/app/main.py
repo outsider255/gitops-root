@@ -38,14 +38,14 @@ async def render(job: JobSpec, background_tasks: BackgroundTasks):
 
     job_dispatch.JOBS[job.job_id] = {"status": "accepted", "output_path": None}
     try:
-        await job_dispatch.dispatch_echo_job(job.job_id)
+        await job_dispatch.dispatch_assembly_job(job)
     except job_dispatch.ApiException as e:
         job_dispatch.JOBS[job.job_id]["status"] = "failed"
         job_dispatch.JOBS[job.job_id]["error"] = str(e)
         raise HTTPException(status_code=502, detail=str(e))
 
     job_dispatch.JOBS[job.job_id]["status"] = "queued"
-    background_tasks.add_task(job_dispatch.watch_echo_job_for_webhook, job)
+    background_tasks.add_task(job_dispatch.watch_assembly_job_for_webhook, job)
     return {"job_id": job.job_id, "status": "accepted"}
 
 
@@ -54,7 +54,7 @@ async def status(job_id: str):
     if job_id not in job_dispatch.JOBS:
         raise HTTPException(status_code=404, detail="unknown job_id")
 
-    job_name = f"echo-{job_id}"
+    job_name = f"assemble-{job_id}"
     try:
         from fastapi.concurrency import run_in_threadpool
         phase = await run_in_threadpool(job_dispatch.get_job_phase, job_name)

@@ -36,18 +36,39 @@ def get_job_phase(job_name: str) -> str:
     return job_phase_from_status(job.status)
 
 
-def build_echo_job_spec(job_id: str) -> "client.V1Job":
-    """Trivial busybox echo-and-exit Job spec, kept only until Task 9
-    replaces /render's dispatch with a real ffmpeg Job spec."""
-    job_name = f"echo-{job_id}"
+def build_assembly_job_spec(job) -> "client.V1Job":
+    """Builds the real ffmpeg assembly Job spec. Resolves loop_ids/track_ids
+    to /assets paths via the locked storage contract (/assets/<type>/<id>.<ext>)
+    -- no separate Asset Library lookup needed inside the Job itself."""
+    job_name = f"assemble-{job.job_id}"
+    loop_path = f"/assets/loops/{job.loop_ids[0]}.mp4"
+    track_path = f"/assets/tracks/{job.track_ids[0]}.mp3"
     container = client.V1Container(
-        name="echo",
-        image="busybox:1.36",
-        command=["sh", "-c", "echo done && sleep 2"],
+        name="assemble",
+        image="render-service:v1",
+        command=["python3", "/app/assembly_entrypoint.py"],
+        args=[loop_path, track_path, job.category, job.output_path],
+        volume_mounts=[
+            client.V1VolumeMount(name="outbox", mount_path="/outbox"),
+            client.V1VolumeMount(name="assets", mount_path="/assets"),
+        ],
     )
     pod_template = client.V1PodTemplateSpec(
-        metadata=client.V1ObjectMeta(labels={"job-id": job_id}),
-        spec=client.V1PodSpec(containers=[container], restart_policy="Never"),
+        metadata=client.V1ObjectMeta(labels={"job-id": job.job_id}),
+        spec=client.V1PodSpec(
+            containers=[container],
+            restart_policy="Never",
+            volumes=[
+                client.V1Volume(
+                    name="outbox",
+                    persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name="render-outbox-pvc"),
+                ),
+                client.V1Volume(
+                    name="assets",
+                    persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name="binary-assets-pvc"),
+                ),
+            ],
+        ),
     )
     return client.V1Job(
         metadata=client.V1ObjectMeta(name=job_name),
@@ -59,22 +80,22 @@ def build_echo_job_spec(job_id: str) -> "client.V1Job":
     )
 
 
-def _dispatch_echo_job_sync(job_id: str) -> str:
+def _dispatch_assembly_job_sync(job) -> str:
     config.load_incluster_config()
     batch = client.BatchV1Api()
-    job_spec = build_echo_job_spec(job_id)
+    job_spec = build_assembly_job_spec(job)
     batch.create_namespaced_job(namespace=NAMESPACE, body=job_spec)
     return job_spec.metadata.name
 
 
-async def dispatch_echo_job(job_id: str) -> str:
-    return await run_in_threadpool(_dispatch_echo_job_sync, job_id)
+async def dispatch_assembly_job(job) -> str:
+    return await run_in_threadpool(_dispatch_assembly_job_sync, job)
 
 
-async def watch_echo_job_for_webhook(job):
+async def watch_assembly_job_for_webhook(job):
     """Background task: polls the already-dispatched Job purely so the
     resume_url webhook can be fired once the Job reaches a terminal phase."""
-    job_name = f"echo-{job.job_id}"
+    job_name = f"assemble-{job.job_id}"
     phase = "queued"
     while phase not in ("completed", "failed"):
         try:

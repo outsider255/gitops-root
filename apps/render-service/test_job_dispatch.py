@@ -67,3 +67,43 @@ def test_failed_condition_takes_precedence_when_both_present():
 
 def test_get_job_phase_function_exists_and_is_callable():
     assert callable(main.get_job_phase)
+
+
+def test_build_assembly_job_spec_uses_render_service_image():
+    class _FakeJob:
+        job_id = "20260623120000"
+        loop_ids = ["loop_dummy_001"]
+        track_ids = ["trk_dummy_001"]
+        output_path = "/outbox/test.mp4"
+        category = "deep_focus"
+
+    spec = main.build_assembly_job_spec(_FakeJob())
+    assert spec.spec.template.spec.containers[0].image == "render-service:v1"
+
+
+def test_build_assembly_job_spec_mounts_outbox_and_assets():
+    class _FakeJob:
+        job_id = "20260623120000"
+        loop_ids = ["loop_dummy_001"]
+        track_ids = ["trk_dummy_001"]
+        output_path = "/outbox/test.mp4"
+        category = "deep_focus"
+
+    spec = main.build_assembly_job_spec(_FakeJob())
+    mount_paths = {m.mount_path for m in spec.spec.template.spec.containers[0].volume_mounts}
+    assert mount_paths == {"/outbox", "/assets"}
+
+
+def test_build_assembly_job_spec_passes_loop_and_track_paths_as_args():
+    class _FakeJob:
+        job_id = "20260623120000"
+        loop_ids = ["loop_dummy_001"]
+        track_ids = ["trk_dummy_001"]
+        output_path = "/outbox/test.mp4"
+        category = "deep_focus"
+
+    spec = main.build_assembly_job_spec(_FakeJob())
+    args = spec.spec.template.spec.containers[0].args
+    assert "/assets/loops/loop_dummy_001.mp4" in args
+    assert "/assets/tracks/trk_dummy_001.mp3" in args
+    assert "/outbox/test.mp4" in args
