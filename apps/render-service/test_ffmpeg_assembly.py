@@ -107,3 +107,34 @@ def test_overlay_composite_cmd_skips_qr_input_when_none():
         "/tmp/loop_77.mp4", "/assets/overlays/rain.mp4", None, "/tmp/composited.mp4"
     )
     assert "/tmp/qr.png" not in cmd
+
+
+def test_inputs_manifest_repeats_loop_path_n_times():
+    manifest = fa.build_inputs_manifest("/tmp/loop_77.mp4", repeat_count=3)
+    lines = [l for l in manifest.splitlines() if l.strip()]
+    assert len(lines) == 3
+    assert all(l == "file '/tmp/loop_77.mp4'" for l in lines)
+
+
+def test_concat_cmd_uses_stream_copy_no_reencode():
+    cmd = fa.build_concat_cmd("/tmp/inputs.txt", "/tmp/track.mp3", "/tmp/final.mp4")
+    assert "-c:v" in cmd
+    assert cmd[cmd.index("-c:v") + 1] == "copy"
+
+
+def test_concat_cmd_uses_concat_demuxer():
+    cmd = fa.build_concat_cmd("/tmp/inputs.txt", "/tmp/track.mp3", "/tmp/final.mp4")
+    assert "-f" in cmd
+    assert cmd[cmd.index("-f") + 1] == "concat"
+    assert "-safe" in cmd
+    assert cmd[cmd.index("-safe") + 1] == "0"
+
+
+def test_concat_cmd_uses_shortest_flag():
+    cmd = fa.build_concat_cmd("/tmp/inputs.txt", "/tmp/track.mp3", "/tmp/final.mp4")
+    assert "-shortest" in cmd
+
+
+def test_repeat_count_for_target_duration_rounds_up():
+    assert fa.repeat_count_for_target_duration(loop_duration_s=8.0, target_duration_s=240.0) == 30
+    assert fa.repeat_count_for_target_duration(loop_duration_s=8.0, target_duration_s=241.0) == 31

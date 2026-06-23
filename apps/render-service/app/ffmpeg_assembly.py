@@ -1,5 +1,6 @@
 import os
 import random
+import math
 
 
 def build_crossfade_loop_cmd(input_path: str, output_path: str, fade_duration_s: float = 0.5) -> list[str]:
@@ -98,3 +99,29 @@ def build_overlay_composite_cmd(
         filter_complex = "[0:v][1:v]blend=all_mode=screen:all_opacity=0.25[v]"
     cmd += ["-filter_complex", filter_complex, "-map", "[v]", output_path]
     return cmd
+
+
+def repeat_count_for_target_duration(loop_duration_s: float, target_duration_s: float) -> int:
+    return math.ceil(target_duration_s / loop_duration_s)
+
+
+def build_inputs_manifest(loop_path: str, repeat_count: int) -> str:
+    """Returns the inputs.txt CONTENT (caller writes it to disk) --
+    repeats the seamless loop path enough times to cover the audio
+    duration. Stream-copy concat below then wraps it without
+    re-encoding a single frame."""
+    return "\n".join(f"file '{loop_path}'" for _ in range(repeat_count)) + "\n"
+
+
+def build_concat_cmd(inputs_txt_path: str, audio_path: str, output_path: str) -> list[str]:
+    """Resource-safe compile: never re-encodes raw frames (-c:v copy),
+    so a 1-2 hour output renders near-instantly regardless of host CPU
+    headroom."""
+    return [
+        "ffmpeg", "-y",
+        "-f", "concat", "-safe", "0", "-i", inputs_txt_path,
+        "-i", audio_path,
+        "-c:v", "copy", "-c:a", "aac",
+        "-shortest",
+        output_path,
+    ]
