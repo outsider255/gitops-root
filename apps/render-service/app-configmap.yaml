@@ -12,13 +12,49 @@ data:
     from datetime import datetime, timezone
 
     from fastapi import FastAPI, HTTPException, BackgroundTasks
+    from fastapi.concurrency import run_in_threadpool
     from pydantic import BaseModel
     from typing import Optional
+
+    from kubernetes import client, config
+    from kubernetes.client.exceptions import ApiException
 
     app = FastAPI()
 
     OUTBOX_BASE = "/outbox/"
+    NAMESPACE = "render-service"
     JOBS = {}
+
+    def job_phase_from_status(job_status) -> str:
+        """Pure helper: maps a K8s V1JobStatus-like object to one of
+        queued/running/completed/failed using status.conditions as the
+        source of truth, NOT the status.failed/status.succeeded counters
+        (kubernetes-client/python#1766: status.failed can be None even on
+        a genuinely failed Job). Accepts any object exposing .conditions
+        and .active attributes (the real V1JobStatus, or a lightweight
+        test stub) so this logic is unit-testable without a live cluster.
+        """
+        conditions = getattr(job_status, "conditions", None) or []
+        for cond in conditions:
+            cond_type = getattr(cond, "type", None)
+            cond_status = getattr(cond, "status", None)
+            if cond_type == "Complete" and cond_status == "True":
+                return "completed"
+            if cond_type == "Failed" and cond_status == "True":
+                return "failed"
+        if getattr(job_status, "active", None):
+            return "running"
+        return "queued"
+
+    def get_job_phase(job_name: str) -> str:
+        """Reads the live Job status from the K8s API and maps it to
+        queued/running/completed/failed via job_phase_from_status (Pattern 2:
+        status.conditions is the source of truth, not bare counters).
+        """
+        config.load_incluster_config()
+        batch = client.BatchV1Api()
+        job = batch.read_namespaced_job_status(name=job_name, namespace=NAMESPACE)
+        return job_phase_from_status(job.status)
 
     class OverlayConfig(BaseModel):
         qr_url: Optional[str] = None
