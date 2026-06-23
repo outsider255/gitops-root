@@ -1,3 +1,7 @@
+import os
+import random
+
+
 def build_crossfade_loop_cmd(input_path: str, output_path: str, fade_duration_s: float = 0.5) -> list[str]:
     """Default seamless-loop technique: blends the clip's tail over its
     own head via xfade, so playback loops without a visible jump cut."""
@@ -51,10 +55,6 @@ def build_ken_burns_cmd(image_path: str, output_path: str, duration_s: float = 8
         "-t", str(duration_s),
         output_path,
     ]
-
-
-import os
-import random
 
 
 class NoOverlaysAvailable(Exception):

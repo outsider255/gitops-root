@@ -79,6 +79,12 @@ def test_pick_random_overlay_raises_on_empty_dir(tmp_path):
         fa.pick_random_overlay(str(tmp_path))
 
 
+def test_pick_random_overlay_raises_on_nonexistent_dir(tmp_path):
+    import pytest
+    with pytest.raises(fa.NoOverlaysAvailable):
+        fa.pick_random_overlay(str(tmp_path / "does_not_exist"))
+
+
 def test_overlay_composite_cmd_uses_screen_blend():
     cmd = fa.build_overlay_composite_cmd(
         "/tmp/loop_77.mp4", "/assets/overlays/rain.mp4", None, "/tmp/composited.mp4"
