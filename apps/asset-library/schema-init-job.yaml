@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: asset-library-schema-init
-  namespace: asset-library
+  namespace: render-service
 spec:
   backoffLimit: 2
   template:

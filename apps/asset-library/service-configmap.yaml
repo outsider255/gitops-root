@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: asset-library-service-app
-  namespace: asset-library
+  namespace: render-service
 data:
   main.py: |
     import base64

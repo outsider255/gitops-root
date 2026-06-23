@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: asset-library-schema
-  namespace: asset-library
+  namespace: render-service
 data:
   schema.sql: |
     CREATE TABLE IF NOT EXISTS track_library (

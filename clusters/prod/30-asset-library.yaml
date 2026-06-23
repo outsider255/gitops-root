@@ -9,7 +9,7 @@ spec:
   project: default
   destination:
     server: https://kubernetes.default.svc
-    namespace: asset-library
+    namespace: render-service
   source:
     repoURL: https://github.com/outsider255/gitops-root.git
     targetRevision: main
