@@ -89,6 +89,63 @@ data:
         conn.close()
         return [dict(r) for r in rows]
 
+    import random
+    from datetime import datetime, timedelta
+
+    EXCLUSION_WINDOW_DAYS = 3
+
+    def _weighted_random_select(rows: list[dict]) -> dict:
+        """Favors low use_count: weight = 1 / (use_count + 1), so a
+        never-used row (use_count=0) is twice as likely as a once-used
+        row, etc. Pure function -- no DB access -- so it's unit-testable
+        against plain dict lists."""
+        weights = [1.0 / (r["use_count"] + 1) for r in rows]
+        return random.choices(rows, weights=weights, k=1)[0]
+
+    def _exclude_recently_used(rows: list[dict], window_days: int = EXCLUSION_WINDOW_DAYS) -> list[dict]:
+        cutoff = datetime.utcnow() - timedelta(days=window_days)
+        result = []
+        for r in rows:
+            if not r["last_used_at"]:
+                result.append(r)
+                continue
+            last_used = datetime.fromisoformat(r["last_used_at"])
+            if last_used < cutoff:
+                result.append(r)
+        return result
+
+    @app.get("/tracks/select")
+    def select_track(category: str):
+        conn = get_conn()
+        rows = [dict(r) for r in conn.execute(
+            "SELECT * FROM track_library WHERE category = ? AND status = 'active' AND qa_passed = 1",
+            (category,),
+        ).fetchall()]
+        if not rows:
+            raise HTTPException(status_code=404, detail=f"no active tracks for category {category}")
+        eligible = _exclude_recently_used(rows) or rows
+        return _weighted_random_select(eligible)
+
+    @app.get("/loops/select")
+    def select_loops(category: str, n: int = 2):
+        conn = get_conn()
+        rows = [dict(r) for r in conn.execute(
+            "SELECT * FROM visual_loop_library WHERE category = ? AND status = 'active'",
+            (category,),
+        ).fetchall()]
+        if len(rows) < n:
+            raise HTTPException(status_code=404, detail=f"only {len(rows)} active loops for category {category}, need {n}")
+        eligible = _exclude_recently_used(rows) or rows
+        selected = []
+        pool = list(eligible)
+        for _ in range(n):
+            if not pool:
+                pool = list(eligible)
+            choice = _weighted_random_select(pool)
+            selected.append(choice)
+            pool = [r for r in pool if r["id"] != choice["id"]]
+        return selected
+
     class AffirmationIn(BaseModel):
         text: str
 
