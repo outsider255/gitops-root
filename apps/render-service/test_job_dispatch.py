@@ -107,3 +107,47 @@ def test_build_assembly_job_spec_passes_loop_and_track_paths_as_args():
     assert "/assets/loops/loop_dummy_001.mp4" in args
     assert "/assets/tracks/trk_dummy_001.mp3" in args
     assert "/outbox/test.mp4" in args
+
+
+def test_build_motion_convert_job_spec_uses_render_service_image():
+    spec = main.build_motion_convert_job_spec(
+        job_id="motionconvert-loop_dummy_001",
+        still_path="/assets/stills/still_001.png",
+        output_path="/assets/loops/loop_dummy_001.mp4"
+    )
+    assert spec.spec.template.spec.containers[0].image == "render-service:v2"
+
+
+def test_build_motion_convert_job_spec_mounts_assets():
+    spec = main.build_motion_convert_job_spec(
+        job_id="motionconvert-loop_dummy_001",
+        still_path="/assets/stills/still_001.png",
+        output_path="/assets/loops/loop_dummy_001.mp4"
+    )
+    mount_paths = {m.mount_path for m in spec.spec.template.spec.containers[0].volume_mounts}
+    assert mount_paths == {"/assets"}
+
+
+def test_build_motion_convert_job_spec_passes_still_and_output_paths_as_args():
+    spec = main.build_motion_convert_job_spec(
+        job_id="motionconvert-loop_dummy_001",
+        still_path="/assets/stills/still_001.png",
+        output_path="/assets/loops/loop_dummy_001.mp4"
+    )
+    args = spec.spec.template.spec.containers[0].args
+    assert args == ["/assets/stills/still_001.png", "/assets/loops/loop_dummy_001.mp4"]
+
+
+def test_build_motion_convert_job_spec_has_correct_container_name_and_command():
+    spec = main.build_motion_convert_job_spec(
+        job_id="motionconvert-loop_dummy_001",
+        still_path="/assets/stills/still_001.png",
+        output_path="/assets/loops/loop_dummy_001.mp4"
+    )
+    assert spec.spec.template.spec.containers[0].name == "motion-convert"
+    command = spec.spec.template.spec.containers[0].command
+    assert len(command) == 3
+    assert command[0] == "python3"
+    assert command[1] == "-c"
+    assert "ffmpeg_assembly" in command[2]
+    assert "build_ken_burns_cmd" in command[2]

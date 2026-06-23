@@ -27,6 +27,12 @@ class JobSpec(BaseModel):
     resume_url: Optional[str] = None
 
 
+class MotionConvertRequest(BaseModel):
+    loop_id: str
+    still_path: str
+    category: str
+
+
 @app.post("/render", status_code=202)
 async def render(job: JobSpec, background_tasks: BackgroundTasks):
     real_base = os.path.realpath(OUTBOX_BASE)
@@ -47,6 +53,17 @@ async def render(job: JobSpec, background_tasks: BackgroundTasks):
     job_dispatch.JOBS[job.job_id]["status"] = "queued"
     background_tasks.add_task(job_dispatch.watch_assembly_job_for_webhook, job)
     return {"job_id": job.job_id, "status": "accepted"}
+
+
+@app.post("/process/motion-convert", status_code=202)
+async def process_motion_convert(req: MotionConvertRequest, background_tasks: BackgroundTasks):
+    job_id = f"motionconvert-{req.loop_id}"
+    output_path = f"/assets/loops/{req.loop_id}.mp4"
+    job_dispatch.JOBS[job_id] = {"status": "accepted", "output_path": None}
+    job_name = await job_dispatch.dispatch_motion_convert_job(job_id, req.still_path, output_path)
+    job_dispatch.JOBS[job_id]["status"] = "queued"
+    background_tasks.add_task(job_dispatch.watch_motion_convert_job, job_id, output_path)
+    return {"job_id": job_id, "job_name": job_name}
 
 
 @app.get("/status/{job_id}")
