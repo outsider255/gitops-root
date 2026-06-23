@@ -23,6 +23,7 @@ spec:
     metadata:
       labels: {app: render-service}
     spec:
+      serviceAccountName: render-service-sa
       containers:
         - name: render-service
           image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
@@ -40,6 +41,8 @@ spec:
               subPath: main.py
             - name: outbox
               mountPath: /outbox
+            - name: assets
+              mountPath: /assets
           readinessProbe:
             httpGet: {path: /healthz, port: 80}
             initialDelaySeconds: 15
@@ -57,6 +60,9 @@ spec:
         - name: outbox
           persistentVolumeClaim:
             claimName: render-outbox-pvc
+        - name: assets
+          persistentVolumeClaim:
+            claimName: binary-assets-pvc
 ---
 apiVersion: v1
 kind: Service

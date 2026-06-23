@@ -28,6 +28,8 @@ spec:
               subPath: main.py
             - name: data
               mountPath: /data
+            - name: assets
+              mountPath: /assets
           readinessProbe:
             httpGet: {path: /healthz, port: 80}
             initialDelaySeconds: 15
@@ -45,6 +47,9 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: asset-library-pvc
+        - name: assets
+          persistentVolumeClaim:
+            claimName: binary-assets-pvc
 ---
 apiVersion: v1
 kind: Service
