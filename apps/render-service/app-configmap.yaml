@@ -5,11 +5,10 @@ metadata:
   namespace: render-service
 data:
   main.py: |
+    import asyncio
     import json
     import os
-    import time
     import urllib.request
-    from datetime import datetime, timezone
 
     from fastapi import FastAPI, HTTPException, BackgroundTasks
     from fastapi.concurrency import run_in_threadpool
@@ -56,6 +55,44 @@ data:
         job = batch.read_namespaced_job_status(name=job_name, namespace=NAMESPACE)
         return job_phase_from_status(job.status)
 
+    def build_echo_job_spec(job_id: str) -> "client.V1Job":
+        """Builds a trivial busybox echo-and-exit Job spec (D-08): proves
+        the dispatch mechanics end-to-end without any PVC mounts or real
+        ffmpeg work (that's Phase 2). Image and command are hardcoded here,
+        server-side, never derived from request input -- eliminating
+        Job-spec injection for this dispatch-mechanics proof (T-01-02-01).
+        """
+        job_name = f"echo-{job_id}"
+        container = client.V1Container(
+            name="echo",
+            image="busybox:1.36",
+            command=["sh", "-c", "echo done && sleep 2"],
+        )
+        pod_template = client.V1PodTemplateSpec(
+            metadata=client.V1ObjectMeta(labels={"job-id": job_id}),
+            spec=client.V1PodSpec(containers=[container], restart_policy="Never"),
+        )
+        return client.V1Job(
+            metadata=client.V1ObjectMeta(name=job_name),
+            spec=client.V1JobSpec(
+                template=pod_template,
+                backoff_limit=2,
+                ttl_seconds_after_finished=3600,
+            ),
+        )
+
+    def _dispatch_echo_job_sync(job_id: str) -> str:
+        config.load_incluster_config()
+        batch = client.BatchV1Api()
+        job_spec = build_echo_job_spec(job_id)
+        batch.create_namespaced_job(namespace=NAMESPACE, body=job_spec)
+        return job_spec.metadata.name
+
+    async def dispatch_echo_job(job_id: str) -> str:
+        """Async wrapper around the sync K8s client call -- run_in_threadpool
+        avoids blocking the FastAPI event loop (Pitfall 3)."""
+        return await run_in_threadpool(_dispatch_echo_job_sync, job_id)
+
     class OverlayConfig(BaseModel):
         qr_url: Optional[str] = None
         affirmation_text: Optional[str] = None
@@ -71,20 +108,30 @@ data:
         output_path: str
         resume_url: Optional[str] = None
 
-    def run_placeholder_render(job: JobSpec):
-        JOBS[job.job_id]["status"] = "rendering"
-        time.sleep(3)
-        with open(job.output_path, "w") as f:
-            f.write(
-                "PLACEHOLDER RENDER OUTPUT\n"
-                f"video_id={job.video_id}\n"
-                f"category={job.category}\n"
-                f"track_ids={job.track_ids}\n"
-                f"loop_ids={job.loop_ids}\n"
-                f"rendered_at={datetime.now(timezone.utc).isoformat()}\n"
-            )
-        JOBS[job.job_id]["status"] = "completed"
-        JOBS[job.job_id]["output_path"] = job.output_path
+    async def watch_echo_job_for_webhook(job: JobSpec):
+        """Background task: polls the already-dispatched echo Job (dispatch
+        itself already happened synchronously in /render, before this task
+        was scheduled) purely so the resume_url webhook can be fired once
+        the Job reaches a terminal phase. /status/{job_id} does its own
+        live get_job_phase call and does NOT depend on this task's JOBS
+        bookkeeping to report status -- this task only owns the
+        webhook-notify-on-completion side effect and the output_path record.
+        """
+        job_name = f"echo-{job.job_id}"
+        phase = "queued"
+        while phase not in ("completed", "failed"):
+            try:
+                phase = await run_in_threadpool(get_job_phase, job_name)
+            except ApiException as e:
+                JOBS[job.job_id]["webhook_notified"] = False
+                JOBS[job.job_id]["webhook_error"] = str(e)
+                return
+            if phase in ("completed", "failed"):
+                break
+            await asyncio.sleep(2)
+
+        if phase == "completed":
+            JOBS[job.job_id]["output_path"] = job.output_path
 
         if job.resume_url:
             try:
@@ -97,7 +144,7 @@ data:
                 JOBS[job.job_id]["webhook_error"] = str(e)
 
     @app.post("/render", status_code=202)
-    def render(job: JobSpec, background_tasks: BackgroundTasks):
+    async def render(job: JobSpec, background_tasks: BackgroundTasks):
         real_base = os.path.realpath(OUTBOX_BASE)
         real_target = os.path.realpath(job.output_path)
         if not (real_target == real_base or real_target.startswith(real_base + os.sep)):
@@ -106,13 +153,29 @@ data:
         os.makedirs(os.path.dirname(real_target), exist_ok=True)
 
         JOBS[job.job_id] = {"status": "accepted", "output_path": None}
-        background_tasks.add_task(run_placeholder_render, job)
+        try:
+            await dispatch_echo_job(job.job_id)
+        except ApiException as e:
+            JOBS[job.job_id]["status"] = "failed"
+            JOBS[job.job_id]["error"] = str(e)
+            raise HTTPException(status_code=502, detail=str(e))
+
+        JOBS[job.job_id]["status"] = "queued"
+        background_tasks.add_task(watch_echo_job_for_webhook, job)
         return {"job_id": job.job_id, "status": "accepted"}
 
     @app.get("/status/{job_id}")
-    def status(job_id: str):
+    async def status(job_id: str):
         if job_id not in JOBS:
             raise HTTPException(status_code=404, detail="unknown job_id")
+
+        job_name = f"echo-{job_id}"
+        try:
+            phase = await run_in_threadpool(get_job_phase, job_name)
+        except ApiException as e:
+            raise HTTPException(status_code=502, detail=str(e))
+
+        JOBS[job_id]["status"] = phase
         return {"job_id": job_id, **JOBS[job_id]}
 
     @app.delete("/outbox/{job_id}")
