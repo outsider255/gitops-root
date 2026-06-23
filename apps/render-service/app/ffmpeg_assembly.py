@@ -51,3 +51,50 @@ def build_ken_burns_cmd(image_path: str, output_path: str, duration_s: float = 8
         "-t", str(duration_s),
         output_path,
     ]
+
+
+import os
+import random
+
+
+class NoOverlaysAvailable(Exception):
+    pass
+
+
+def pick_random_overlay(overlays_dir: str = "/assets/overlays") -> str:
+    """Randomly selects one pre-downloaded atmospheric overlay (rain,
+    snow, film grain, etc.) per render run."""
+    if not os.path.isdir(overlays_dir):
+        raise NoOverlaysAvailable(f"{overlays_dir} does not exist")
+    candidates = [
+        os.path.join(overlays_dir, f)
+        for f in os.listdir(overlays_dir)
+        if os.path.isfile(os.path.join(overlays_dir, f))
+    ]
+    if not candidates:
+        raise NoOverlaysAvailable(f"no overlay files in {overlays_dir}")
+    return random.choice(candidates)
+
+
+def build_overlay_composite_cmd(
+    base_video_path: str,
+    overlay_path: str,
+    qr_image_path: str | None,
+    output_path: str,
+) -> list[str]:
+    """Low-opacity screen-blends the atmospheric overlay onto the base
+    loop, then (if provided) overlays a QR code in the bottom-right
+    corner -- qr_image_path is generated once per video by the caller
+    (Task 9) via the `qrcode` package from overlay_config.qr_url, not
+    inside ffmpeg (ffmpeg has no native QR generation)."""
+    cmd = ["ffmpeg", "-y", "-i", base_video_path, "-i", overlay_path]
+    if qr_image_path:
+        cmd += ["-i", qr_image_path]
+        filter_complex = (
+            "[0:v][1:v]blend=all_mode=screen:all_opacity=0.25[bg];"
+            "[bg][2:v]overlay=W-w-20:H-h-20[v]"
+        )
+    else:
+        filter_complex = "[0:v][1:v]blend=all_mode=screen:all_opacity=0.25[v]"
+    cmd += ["-filter_complex", filter_complex, "-map", "[v]", output_path]
+    return cmd

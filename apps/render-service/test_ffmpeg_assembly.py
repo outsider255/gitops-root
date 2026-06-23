@@ -64,3 +64,40 @@ def test_ken_burns_cmd_respects_zoom_target():
     cmd = fa.build_ken_burns_cmd("/assets/stills/77.jpg", "/tmp/loop_77.mp4", zoom_target=1.25)
     filter_arg = cmd[cmd.index("-filter_complex") + 1]
     assert "1.25" in filter_arg
+
+
+def test_pick_random_overlay_returns_a_file_from_dir(tmp_path):
+    (tmp_path / "rain.mp4").write_bytes(b"x")
+    (tmp_path / "snow.mp4").write_bytes(b"x")
+    picked = fa.pick_random_overlay(str(tmp_path))
+    assert picked in (str(tmp_path / "rain.mp4"), str(tmp_path / "snow.mp4"))
+
+
+def test_pick_random_overlay_raises_on_empty_dir(tmp_path):
+    import pytest
+    with pytest.raises(fa.NoOverlaysAvailable):
+        fa.pick_random_overlay(str(tmp_path))
+
+
+def test_overlay_composite_cmd_uses_screen_blend():
+    cmd = fa.build_overlay_composite_cmd(
+        "/tmp/loop_77.mp4", "/assets/overlays/rain.mp4", None, "/tmp/composited.mp4"
+    )
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert "blend=all_mode=screen" in filter_arg
+
+
+def test_overlay_composite_cmd_includes_qr_overlay_when_provided():
+    cmd = fa.build_overlay_composite_cmd(
+        "/tmp/loop_77.mp4", "/assets/overlays/rain.mp4", "/tmp/qr.png", "/tmp/composited.mp4"
+    )
+    assert "/tmp/qr.png" in cmd
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert "overlay" in filter_arg
+
+
+def test_overlay_composite_cmd_skips_qr_input_when_none():
+    cmd = fa.build_overlay_composite_cmd(
+        "/tmp/loop_77.mp4", "/assets/overlays/rain.mp4", None, "/tmp/composited.mp4"
+    )
+    assert "/tmp/qr.png" not in cmd
