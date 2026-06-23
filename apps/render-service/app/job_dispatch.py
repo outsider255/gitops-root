@@ -45,7 +45,7 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     track_path = f"/assets/tracks/{job.track_ids[0]}.mp3"
     container = client.V1Container(
         name="assemble",
-        image="render-service:v1",
+        image="render-service:v2",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, track_path, job.category, job.output_path],
         volume_mounts=[

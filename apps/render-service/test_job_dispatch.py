@@ -78,7 +78,7 @@ def test_build_assembly_job_spec_uses_render_service_image():
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v1"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v2"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets():
