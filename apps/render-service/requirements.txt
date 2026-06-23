@@ -1,0 +1,6 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+kubernetes==31.0.0
+tenacity==9.0.0
+qrcode[pil]==8.0

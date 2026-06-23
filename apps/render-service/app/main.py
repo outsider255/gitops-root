@@ -1,0 +1,91 @@
+import os
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel
+from typing import Optional
+
+import job_dispatch
+
+app = FastAPI()
+
+OUTBOX_BASE = "/outbox/"
+
+
+class OverlayConfig(BaseModel):
+    qr_url: Optional[str] = None
+    affirmation_text: Optional[str] = None
+    watermark: Optional[str] = None
+
+
+class JobSpec(BaseModel):
+    job_id: str
+    video_id: str
+    category: str
+    track_ids: list[str]
+    loop_ids: list[str]
+    overlay_config: OverlayConfig = OverlayConfig()
+    output_path: str
+    resume_url: Optional[str] = None
+
+
+@app.post("/render", status_code=202)
+async def render(job: JobSpec, background_tasks: BackgroundTasks):
+    real_base = os.path.realpath(OUTBOX_BASE)
+    real_target = os.path.realpath(job.output_path)
+    if not (real_target == real_base or real_target.startswith(real_base + os.sep)):
+        raise HTTPException(status_code=400, detail=f"output_path must be under {OUTBOX_BASE}")
+
+    os.makedirs(os.path.dirname(real_target), exist_ok=True)
+
+    job_dispatch.JOBS[job.job_id] = {"status": "accepted", "output_path": None}
+    try:
+        await job_dispatch.dispatch_echo_job(job.job_id)
+    except job_dispatch.ApiException as e:
+        job_dispatch.JOBS[job.job_id]["status"] = "failed"
+        job_dispatch.JOBS[job.job_id]["error"] = str(e)
+        raise HTTPException(status_code=502, detail=str(e))
+
+    job_dispatch.JOBS[job.job_id]["status"] = "queued"
+    background_tasks.add_task(job_dispatch.watch_echo_job_for_webhook, job)
+    return {"job_id": job.job_id, "status": "accepted"}
+
+
+@app.get("/status/{job_id}")
+async def status(job_id: str):
+    if job_id not in job_dispatch.JOBS:
+        raise HTTPException(status_code=404, detail="unknown job_id")
+
+    job_name = f"echo-{job_id}"
+    try:
+        from fastapi.concurrency import run_in_threadpool
+        phase = await run_in_threadpool(job_dispatch.get_job_phase, job_name)
+    except job_dispatch.ApiException as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    job_dispatch.JOBS[job_id]["status"] = phase
+    return {"job_id": job_id, **job_dispatch.JOBS[job_id]}
+
+
+@app.delete("/outbox/{job_id}")
+def delete_output(job_id: str):
+    if job_id not in job_dispatch.JOBS:
+        raise HTTPException(status_code=404, detail="unknown job_id")
+    output_path = job_dispatch.JOBS[job_id].get("output_path")
+    if not output_path:
+        raise HTTPException(status_code=400, detail="job has no output_path (not completed yet)")
+
+    real_base = os.path.realpath(OUTBOX_BASE)
+    real_target = os.path.realpath(output_path)
+    if not (real_target == real_base or real_target.startswith(real_base + os.sep)):
+        raise HTTPException(status_code=400, detail=f"output_path must be under {OUTBOX_BASE}")
+
+    if not os.path.exists(real_target):
+        raise HTTPException(status_code=404, detail="output file not found on disk")
+
+    os.remove(real_target)
+    job_dispatch.JOBS[job_id]["deleted"] = True
+    return {"job_id": job_id, "deleted": True}
+
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}

@@ -26,19 +26,14 @@ spec:
       serviceAccountName: render-service-sa
       containers:
         - name: render-service
-          image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
+          image: render-service:v1
+          imagePullPolicy: Never
           ports:
             - containerPort: 80
-          env:
-            - {name: MODULE_NAME, value: 'main'}
-            - {name: WEB_CONCURRENCY, value: '1'}
           resources:
             requests: {cpu: '200m', memory: '256Mi'}
             limits: {cpu: '500m', memory: '384Mi'}
           volumeMounts:
-            - name: app-code
-              mountPath: /app/main.py
-              subPath: main.py
             - name: outbox
               mountPath: /outbox
             - name: assets
@@ -54,9 +49,6 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 6
       volumes:
-        - name: app-code
-          configMap:
-            name: render-service-app
         - name: outbox
           persistentVolumeClaim:
             claimName: render-outbox-pvc
