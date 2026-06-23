@@ -17,7 +17,7 @@ data:
 
     app = FastAPI()
     DB_PATH = "/data/library.db"
-    ASSETS_DIR = "/data/visual-assets"
+    ASSETS_DIR = "/assets/stills"
 
     def get_conn():
         conn = sqlite3.connect(DB_PATH)
