@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: asset-library-migration-003
+  namespace: render-service
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: python:3.12-slim
+          command:
+            - python3
+            - -c
+            - |
+              import sqlite3
+              conn = sqlite3.connect('/data/library.db')
+              conn.executescript(open('/sql/migrate.sql').read())
+              conn.commit()
+              conn.close()
+              print('migration 003 applied: visual_loop_library.crop_focal_x/y')
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: sql
+              mountPath: /sql
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: asset-library-pvc
+        - name: sql
+          configMap:
+            name: asset-library-migration-003
