@@ -39,6 +39,10 @@ data:
         scene_tags: list[str] = []
         qa_gates_passed: dict = {}
 
+    class LoopPatch(BaseModel):
+        crop_focal_x: Optional[float] = None
+        crop_focal_y: Optional[float] = None
+
     @app.post("/tracks", status_code=201)
     def create_track(track: TrackIn):
         track_id = f"trk_{uuid.uuid4().hex[:10]}"
@@ -165,6 +169,19 @@ data:
         if not row:
             raise HTTPException(status_code=404, detail=f"no loop with id {loop_id}")
         return dict(row)
+
+    @app.patch("/loops/{loop_id}")
+    def patch_loop(loop_id: str, patch: LoopPatch):
+        conn = get_conn()
+        cur = conn.execute(
+            "UPDATE visual_loop_library SET crop_focal_x = ?, crop_focal_y = ? WHERE id = ?",
+            (patch.crop_focal_x, patch.crop_focal_y, loop_id),
+        )
+        conn.commit()
+        conn.close()
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail=f"no loop with id {loop_id}")
+        return {"id": loop_id, "crop_focal_x": patch.crop_focal_x, "crop_focal_y": patch.crop_focal_y}
 
     @app.post("/tracks/{track_id}/mark-used")
     def mark_track_used(track_id: str):
