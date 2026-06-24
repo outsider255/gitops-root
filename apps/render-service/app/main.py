@@ -41,6 +41,17 @@ class DownloadToAssetsRequest(BaseModel):
     target_path: str
 
 
+class ClipRequest(BaseModel):
+    job_id: str
+    main_loop_path: str
+    main_track_path: str
+    focal_x: float
+    focal_y: float
+    audio_start_s: float = 30.0
+    audio_duration_s: float = 40.0
+    output_path: str
+
+
 @app.post("/render", status_code=202)
 async def render(job: JobSpec, background_tasks: BackgroundTasks):
     real_base = os.path.realpath(OUTBOX_BASE)
@@ -66,6 +77,27 @@ async def render(job: JobSpec, background_tasks: BackgroundTasks):
     job_dispatch.JOBS[job.job_id]["status"] = "queued"
     background_tasks.add_task(job_dispatch.watch_assembly_job_for_webhook, job)
     return {"job_id": job.job_id, "status": "accepted"}
+
+
+@app.post("/render/clip", status_code=202)
+async def render_clip(req: ClipRequest, background_tasks: BackgroundTasks):
+    real_base = os.path.realpath(OUTBOX_BASE)
+    real_target = os.path.realpath(req.output_path)
+    if not (real_target == real_base or real_target.startswith(real_base + os.sep)):
+        raise HTTPException(status_code=400, detail=f"output_path must be under {OUTBOX_BASE}")
+
+    os.makedirs(os.path.dirname(real_target), exist_ok=True)
+
+    job_dispatch.JOBS[req.job_id] = {
+        "status": "accepted",
+        "output_path": None,
+        "requested_output_path": req.output_path,
+    }
+    job_name = await job_dispatch.dispatch_clip_job(req)
+    job_dispatch.JOBS[req.job_id]["job_name"] = job_name
+    job_dispatch.JOBS[req.job_id]["status"] = "queued"
+    background_tasks.add_task(job_dispatch.watch_clip_job, req)
+    return {"job_id": req.job_id, "job_name": job_name}
 
 
 @app.post("/process/motion-convert", status_code=202)

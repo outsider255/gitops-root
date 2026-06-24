@@ -64,7 +64,7 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     track_path = resolve_asset_path("tracks", job.track_ids[0])
     container = client.V1Container(
         name="assemble",
-        image="render-service:v10",
+        image="render-service:v11",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, track_path, job.category, job.output_path],
         volume_mounts=[
@@ -139,11 +139,71 @@ async def watch_assembly_job_for_webhook(job):
             JOBS[job.job_id]["webhook_error"] = str(e)
 
 
+def build_clip_job_spec(req) -> "client.V1Job":
+    job_name = k8s_job_name("clip", req.job_id)
+    container = client.V1Container(
+        name="clip",
+        image="render-service:v11",
+        command=["python3", "/app/clip_entrypoint.py"],
+        args=[
+            req.main_loop_path, req.main_track_path,
+            str(req.focal_x), str(req.focal_y),
+            str(req.audio_start_s), str(req.audio_duration_s),
+            req.output_path,
+        ],
+        volume_mounts=[
+            client.V1VolumeMount(name="outbox", mount_path="/outbox"),
+            client.V1VolumeMount(name="assets", mount_path="/assets"),
+        ],
+    )
+    pod_template = client.V1PodTemplateSpec(
+        metadata=client.V1ObjectMeta(labels={"job-id": req.job_id}),
+        spec=client.V1PodSpec(
+            containers=[container],
+            restart_policy="Never",
+            volumes=[
+                client.V1Volume(name="outbox", persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name="render-outbox-pvc")),
+                client.V1Volume(name="assets", persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(claim_name="binary-assets-pvc")),
+            ],
+        ),
+    )
+    return client.V1Job(
+        metadata=client.V1ObjectMeta(name=job_name),
+        spec=client.V1JobSpec(template=pod_template, backoff_limit=2, ttl_seconds_after_finished=3600),
+    )
+
+
+async def dispatch_clip_job(req) -> str:
+    def _sync():
+        config.load_incluster_config()
+        batch = client.BatchV1Api()
+        spec = build_clip_job_spec(req)
+        batch.create_namespaced_job(namespace=NAMESPACE, body=spec)
+        return spec.metadata.name
+    return await run_in_threadpool(_sync)
+
+
+async def watch_clip_job(req):
+    job_name = k8s_job_name("clip", req.job_id)
+    phase = "queued"
+    while phase not in ("completed", "failed"):
+        try:
+            phase = await run_in_threadpool(get_job_phase, job_name)
+        except ApiException:
+            return
+        if phase in ("completed", "failed"):
+            break
+        await asyncio.sleep(2)
+    JOBS[req.job_id]["status"] = phase
+    if phase == "completed":
+        JOBS[req.job_id]["output_path"] = req.output_path
+
+
 def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str) -> "client.V1Job":
     job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v10",
+        image="render-service:v11",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
             "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2]), check=True)"

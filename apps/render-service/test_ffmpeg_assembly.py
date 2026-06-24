@@ -138,3 +138,30 @@ def test_concat_cmd_uses_shortest_flag():
 def test_repeat_count_for_target_duration_rounds_up():
     assert fa.repeat_count_for_target_duration(loop_duration_s=8.0, target_duration_s=240.0) == 30
     assert fa.repeat_count_for_target_duration(loop_duration_s=8.0, target_duration_s=241.0) == 31
+
+
+def test_vertical_crop_cmd_uses_crop_filter_centered_on_focal_point():
+    cmd = fa.build_vertical_crop_cmd("/tmp/main.mp4", "/tmp/short.mp4", focal_x=0.5, focal_y=0.5)
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert "crop=" in filter_arg
+
+
+def test_vertical_crop_cmd_outputs_9x16_aspect_via_crop_dims():
+    cmd = fa.build_vertical_crop_cmd("/tmp/main.mp4", "/tmp/short.mp4", focal_x=0.5, focal_y=0.5, source_w=1920, source_h=1080)
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    # crop width for a 9:16 vertical slice of a 1080-tall source is 1080*9/16 = 607.5 -> 608
+    assert "crop=608:1080" in filter_arg
+
+
+def test_vertical_crop_cmd_clamps_offset_so_crop_stays_in_frame():
+    # focal_x near the right edge must not push the crop box past source_w
+    cmd = fa.build_vertical_crop_cmd("/tmp/main.mp4", "/tmp/short.mp4", focal_x=0.98, focal_y=0.5, source_w=1920, source_h=1080)
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert "crop=608:1080:1312:0" in filter_arg  # 1920-608=1312 is the max valid x offset
+
+
+def test_audio_trim_cmd_uses_atrim_and_afade():
+    cmd = fa.build_audio_trim_cmd("/tmp/track.mp3", "/tmp/clip_audio.mp3", start_s=30.0, duration_s=40.0)
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert "atrim=30.0:70.0" in filter_arg
+    assert "afade" in filter_arg

@@ -113,6 +113,52 @@ def build_inputs_manifest(loop_path: str, repeat_count: int) -> str:
     return "\n".join(f"file '{loop_path}'" for _ in range(repeat_count)) + "\n"
 
 
+def build_vertical_crop_cmd(
+    input_path: str,
+    output_path: str,
+    focal_x: float,
+    focal_y: float,
+    source_w: int = 1920,
+    source_h: int = 1080,
+) -> list[str]:
+    """Crops a 16:9 source to a 9:16 vertical slice centered on the
+    stored focal point, clamped so the crop box never extends past the
+    source frame. Free -- reuses the existing 16:9 loop, no second
+    generation call (regenerating a native-vertical asset would double
+    the visual-generation cost per loop)."""
+    crop_w = round(source_h * 9 / 16)
+    crop_h = source_h
+    target_x = round(focal_x * source_w - crop_w / 2)
+    max_x = source_w - crop_w
+    x = max(0, min(target_x, max_x))
+    filter_complex = f"[0:v]crop={crop_w}:{crop_h}:{x}:0[v]"
+    return [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-filter_complex", filter_complex,
+        "-map", "[v]",
+        output_path,
+    ]
+
+
+def build_audio_trim_cmd(input_path: str, output_path: str, start_s: float, duration_s: float, fade_s: float = 1.0) -> list[str]:
+    """Trims a 30-45s segment from the main track (with fade in/out) so
+    the Short previews the actual audio from the full video."""
+    end_s = start_s + duration_s
+    filter_complex = (
+        f"[0:a]atrim={start_s}:{end_s},"
+        f"afade=t=in:st={start_s}:d={fade_s},"
+        f"afade=t=out:st={end_s - fade_s}:d={fade_s}[a]"
+    )
+    return [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-filter_complex", filter_complex,
+        "-map", "[a]",
+        output_path,
+    ]
+
+
 def build_concat_cmd(inputs_txt_path: str, audio_path: str, output_path: str) -> list[str]:
     """Resource-safe compile: never re-encodes raw frames (-c:v copy),
     so a 1-2 hour output renders near-instantly regardless of host CPU

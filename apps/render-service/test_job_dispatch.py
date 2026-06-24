@@ -85,7 +85,7 @@ def test_build_assembly_job_spec_uses_render_service_image(monkeypatch):
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v10"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v11"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets(monkeypatch):
@@ -161,13 +161,51 @@ def test_build_motion_convert_job_spec_job_name_has_no_underscores():
     assert "_" not in spec.metadata.name
 
 
+class _FakeClipRequest:
+    job_id = "20260624130000"
+    main_loop_path = "/assets/loops/loop_4b50874c8f.mp4"
+    main_track_path = "/assets/tracks/trk_7037ede592.mp3"
+    focal_x = 0.5
+    focal_y = 0.5
+    audio_start_s = 30.0
+    audio_duration_s = 40.0
+    output_path = "/outbox/clip-test.mp4"
+
+
+def test_build_clip_job_spec_uses_render_service_image():
+    spec = main.build_clip_job_spec(_FakeClipRequest())
+    assert spec.spec.template.spec.containers[0].image == "render-service:v11"
+
+
+def test_build_clip_job_spec_mounts_outbox_and_assets():
+    spec = main.build_clip_job_spec(_FakeClipRequest())
+    mount_paths = {m.mount_path for m in spec.spec.template.spec.containers[0].volume_mounts}
+    assert mount_paths == {"/outbox", "/assets"}
+
+
+def test_build_clip_job_spec_passes_args_in_order():
+    spec = main.build_clip_job_spec(_FakeClipRequest())
+    args = spec.spec.template.spec.containers[0].args
+    assert args == [
+        "/assets/loops/loop_4b50874c8f.mp4",
+        "/assets/tracks/trk_7037ede592.mp3",
+        "0.5", "0.5", "30.0", "40.0",
+        "/outbox/clip-test.mp4",
+    ]
+
+
+def test_build_clip_job_spec_job_name_has_no_underscores():
+    spec = main.build_clip_job_spec(_FakeClipRequest())
+    assert "_" not in spec.metadata.name
+
+
 def test_build_motion_convert_job_spec_uses_render_service_image():
     spec = main.build_motion_convert_job_spec(
         job_id="motionconvert-loop_dummy_001",
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v10"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v11"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():
