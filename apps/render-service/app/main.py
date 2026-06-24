@@ -60,6 +60,7 @@ async def render(job: JobSpec, background_tasks: BackgroundTasks):
 async def process_motion_convert(req: MotionConvertRequest, background_tasks: BackgroundTasks):
     job_id = f"motionconvert-{req.loop_id}"
     output_path = f"/assets/loops/{req.loop_id}.mp4"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     job_dispatch.JOBS[job_id] = {"status": "accepted", "output_path": None}
     job_name = await job_dispatch.dispatch_motion_convert_job(job_id, req.still_path, output_path)
     job_dispatch.JOBS[job_id]["job_name"] = job_name
