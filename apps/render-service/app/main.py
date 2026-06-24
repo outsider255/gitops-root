@@ -43,9 +43,9 @@ async def render(job: JobSpec, background_tasks: BackgroundTasks):
     os.makedirs(os.path.dirname(real_target), exist_ok=True)
 
     job_dispatch.JOBS[job.job_id] = {"status": "accepted", "output_path": None}
-    job_dispatch.JOBS[job.job_id]["job_name"] = f"assemble-{job.job_id}"
     try:
-        await job_dispatch.dispatch_assembly_job(job)
+        job_name = await job_dispatch.dispatch_assembly_job(job)
+        job_dispatch.JOBS[job.job_id]["job_name"] = job_name
     except job_dispatch.ApiException as e:
         job_dispatch.JOBS[job.job_id]["status"] = "failed"
         job_dispatch.JOBS[job.job_id]["error"] = str(e)

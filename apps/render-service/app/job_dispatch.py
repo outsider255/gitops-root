@@ -9,6 +9,13 @@ NAMESPACE = "render-service"
 JOBS = {}
 
 
+def k8s_job_name(prefix: str, job_id: str) -> str:
+    """job_id values (loop_xxx, trk_xxx, motionconvert-loop_xxx, ...) may
+    contain underscores, which are not valid in K8s resource names (RFC 1123
+    subdomain). Sanitize so create_namespaced_job doesn't 422."""
+    return f"{prefix}-{job_id}".replace("_", "-").lower()
+
+
 def job_phase_from_status(job_status) -> str:
     """Pure helper: maps a K8s V1JobStatus-like object to one of
     queued/running/completed/failed using status.conditions as the
@@ -40,12 +47,12 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     """Builds the real ffmpeg assembly Job spec. Resolves loop_ids/track_ids
     to /assets paths via the locked storage contract (/assets/<type>/<id>.<ext>)
     -- no separate Asset Library lookup needed inside the Job itself."""
-    job_name = f"assemble-{job.job_id}"
+    job_name = k8s_job_name("assemble", job.job_id)
     loop_path = f"/assets/loops/{job.loop_ids[0]}.mp4"
     track_path = f"/assets/tracks/{job.track_ids[0]}.mp3"
     container = client.V1Container(
         name="assemble",
-        image="render-service:v3",
+        image="render-service:v4",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, track_path, job.category, job.output_path],
         volume_mounts=[
@@ -95,7 +102,7 @@ async def dispatch_assembly_job(job) -> str:
 async def watch_assembly_job_for_webhook(job):
     """Background task: polls the already-dispatched Job purely so the
     resume_url webhook can be fired once the Job reaches a terminal phase."""
-    job_name = f"assemble-{job.job_id}"
+    job_name = k8s_job_name("assemble", job.job_id)
     phase = "queued"
     while phase not in ("completed", "failed"):
         try:
@@ -121,10 +128,10 @@ async def watch_assembly_job_for_webhook(job):
 
 
 def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str) -> "client.V1Job":
-    job_name = f"job-{job_id}"
+    job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v3",
+        image="render-service:v4",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
             "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2]), check=True)"
@@ -160,7 +167,7 @@ async def dispatch_motion_convert_job(job_id: str, still_path: str, output_path:
 
 
 async def watch_motion_convert_job(job_id: str, output_path: str):
-    job_name = f"job-{job_id}"
+    job_name = k8s_job_name("job", job_id)
     phase = "queued"
     while phase not in ("completed", "failed"):
         try:

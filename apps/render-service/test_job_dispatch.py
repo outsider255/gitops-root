@@ -78,7 +78,7 @@ def test_build_assembly_job_spec_uses_render_service_image():
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v3"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v4"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets():
@@ -109,13 +109,27 @@ def test_build_assembly_job_spec_passes_loop_and_track_paths_as_args():
     assert "/outbox/test.mp4" in args
 
 
+def test_k8s_job_name_strips_underscores_for_k8s_resource_name_validity():
+    assert main.k8s_job_name("job", "motionconvert-loop_dummy_001") == "job-motionconvert-loop-dummy-001"
+    assert main.k8s_job_name("assemble", "20260623_120000") == "assemble-20260623-120000"
+
+
+def test_build_motion_convert_job_spec_job_name_has_no_underscores():
+    spec = main.build_motion_convert_job_spec(
+        job_id="motionconvert-loop_dummy_001",
+        still_path="/assets/stills/still_001.png",
+        output_path="/assets/loops/loop_dummy_001.mp4"
+    )
+    assert "_" not in spec.metadata.name
+
+
 def test_build_motion_convert_job_spec_uses_render_service_image():
     spec = main.build_motion_convert_job_spec(
         job_id="motionconvert-loop_dummy_001",
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v3"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v4"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():
