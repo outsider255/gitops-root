@@ -64,7 +64,7 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     track_path = resolve_asset_path("tracks", job.track_ids[0])
     container = client.V1Container(
         name="assemble",
-        image="render-service:v9",
+        image="render-service:v10",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, track_path, job.category, job.output_path],
         volume_mounts=[
@@ -143,7 +143,7 @@ def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str
     job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v9",
+        image="render-service:v10",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
             "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2]), check=True)"

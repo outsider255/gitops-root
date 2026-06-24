@@ -1,6 +1,7 @@
 import os
 import urllib.request
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 
@@ -114,6 +115,25 @@ async def status(job_id: str):
     if phase == "completed" and not job_dispatch.JOBS[job_id].get("output_path"):
         job_dispatch.JOBS[job_id]["output_path"] = job_dispatch.JOBS[job_id]["requested_output_path"]
     return {"job_id": job_id, **job_dispatch.JOBS[job_id]}
+
+
+@app.get("/outbox/{job_id}/download")
+def download_output(job_id: str):
+    if job_id not in job_dispatch.JOBS:
+        raise HTTPException(status_code=404, detail="unknown job_id")
+    output_path = job_dispatch.JOBS[job_id].get("output_path")
+    if not output_path:
+        raise HTTPException(status_code=400, detail="job has no output_path (not completed yet)")
+
+    real_base = os.path.realpath(OUTBOX_BASE)
+    real_target = os.path.realpath(output_path)
+    if not (real_target == real_base or real_target.startswith(real_base + os.sep)):
+        raise HTTPException(status_code=400, detail=f"output_path must be under {OUTBOX_BASE}")
+
+    if not os.path.exists(real_target):
+        raise HTTPException(status_code=404, detail="output file not found on disk")
+
+    return FileResponse(real_target, media_type="video/mp4", filename=os.path.basename(real_target))
 
 
 @app.delete("/outbox/{job_id}")

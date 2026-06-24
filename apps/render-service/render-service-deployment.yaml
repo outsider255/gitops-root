@@ -26,7 +26,7 @@ spec:
       serviceAccountName: render-service-sa
       containers:
         - name: render-service
-          image: render-service:v9
+          image: render-service:v10
           imagePullPolicy: Never
           ports:
             - containerPort: 80
