@@ -148,6 +148,24 @@ data:
             pool = [r for r in pool if r["id"] != choice["id"]]
         return selected
 
+    @app.get("/tracks/{track_id}")
+    def get_track(track_id: str):
+        conn = get_conn()
+        row = conn.execute("SELECT * FROM track_library WHERE id = ?", (track_id,)).fetchone()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"no track with id {track_id}")
+        return dict(row)
+
+    @app.get("/loops/{loop_id}")
+    def get_loop(loop_id: str):
+        conn = get_conn()
+        row = conn.execute("SELECT * FROM visual_loop_library WHERE id = ?", (loop_id,)).fetchone()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail=f"no loop with id {loop_id}")
+        return dict(row)
+
     @app.post("/tracks/{track_id}/mark-used")
     def mark_track_used(track_id: str):
         conn = get_conn()

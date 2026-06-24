@@ -69,7 +69,14 @@ def test_get_job_phase_function_exists_and_is_callable():
     assert callable(main.get_job_phase)
 
 
-def test_build_assembly_job_spec_uses_render_service_image():
+def _stub_resolve_asset_path(kind, asset_id):
+    ext = "mp4" if kind == "loops" else "mp3"
+    return f"/assets/{kind}/{asset_id}.{ext}"
+
+
+def test_build_assembly_job_spec_uses_render_service_image(monkeypatch):
+    monkeypatch.setattr(main, "resolve_asset_path", _stub_resolve_asset_path)
+
     class _FakeJob:
         job_id = "20260623120000"
         loop_ids = ["loop_dummy_001"]
@@ -78,10 +85,12 @@ def test_build_assembly_job_spec_uses_render_service_image():
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v8"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v9"
 
 
-def test_build_assembly_job_spec_mounts_outbox_and_assets():
+def test_build_assembly_job_spec_mounts_outbox_and_assets(monkeypatch):
+    monkeypatch.setattr(main, "resolve_asset_path", _stub_resolve_asset_path)
+
     class _FakeJob:
         job_id = "20260623120000"
         loop_ids = ["loop_dummy_001"]
@@ -94,7 +103,9 @@ def test_build_assembly_job_spec_mounts_outbox_and_assets():
     assert mount_paths == {"/outbox", "/assets"}
 
 
-def test_build_assembly_job_spec_passes_loop_and_track_paths_as_args():
+def test_build_assembly_job_spec_passes_loop_and_track_paths_as_args(monkeypatch):
+    monkeypatch.setattr(main, "resolve_asset_path", _stub_resolve_asset_path)
+
     class _FakeJob:
         job_id = "20260623120000"
         loop_ids = ["loop_dummy_001"]
@@ -107,6 +118,33 @@ def test_build_assembly_job_spec_passes_loop_and_track_paths_as_args():
     assert "/assets/loops/loop_dummy_001.mp4" in args
     assert "/assets/tracks/trk_dummy_001.mp3" in args
     assert "/outbox/test.mp4" in args
+
+
+def test_build_assembly_job_spec_resolves_paths_via_asset_library_not_naming_convention(monkeypatch):
+    """Assets aren't reliably named after their db id (e.g. Mode A-generated
+    loop files keep their motion-convert job id, not the db id asset-library
+    assigns), so build_assembly_job_spec must look paths up, not guess them."""
+    calls = []
+
+    def _fake_resolve(kind, asset_id):
+        calls.append((kind, asset_id))
+        return f"/assets/{kind}/totally-different-filename.bin"
+
+    monkeypatch.setattr(main, "resolve_asset_path", _fake_resolve)
+
+    class _FakeJob:
+        job_id = "20260623120000"
+        loop_ids = ["loop_4b50874c8f"]
+        track_ids = ["trk_9d180f3602"]
+        output_path = "/outbox/test.mp4"
+        category = "deep_focus"
+
+    spec = main.build_assembly_job_spec(_FakeJob())
+    args = spec.spec.template.spec.containers[0].args
+    assert "/assets/loops/totally-different-filename.bin" in args
+    assert "/assets/tracks/totally-different-filename.bin" in args
+    assert ("loops", "loop_4b50874c8f") in calls
+    assert ("tracks", "trk_9d180f3602") in calls
 
 
 def test_k8s_job_name_strips_underscores_for_k8s_resource_name_validity():
@@ -129,7 +167,7 @@ def test_build_motion_convert_job_spec_uses_render_service_image():
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v8"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v9"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():

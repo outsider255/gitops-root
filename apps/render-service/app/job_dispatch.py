@@ -1,12 +1,24 @@
 import urllib.request
 import asyncio
+import json
 
 from fastapi.concurrency import run_in_threadpool
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 
 NAMESPACE = "render-service"
+ASSET_LIBRARY_BASE = "http://asset-library-service.render-service.svc.cluster.local"
 JOBS = {}
+
+
+def resolve_asset_path(kind: str, asset_id: str) -> str:
+    """Looks up an asset's real file_path from the asset-library DB by id.
+    Assets aren't necessarily named after their db id (e.g. Mode A names
+    motion-converted loops after the source still's job id, not the db id
+    asset-library assigns on insert), so this can't be guessed from a
+    fixed naming convention -- it must be looked up."""
+    with urllib.request.urlopen(f"{ASSET_LIBRARY_BASE}/{kind}/{asset_id}", timeout=10) as resp:
+        return json.loads(resp.read())["file_path"]
 
 
 def k8s_job_name(prefix: str, job_id: str) -> str:
@@ -45,14 +57,14 @@ def get_job_phase(job_name: str) -> str:
 
 def build_assembly_job_spec(job) -> "client.V1Job":
     """Builds the real ffmpeg assembly Job spec. Resolves loop_ids/track_ids
-    to /assets paths via the locked storage contract (/assets/<type>/<id>.<ext>)
-    -- no separate Asset Library lookup needed inside the Job itself."""
+    to their real /assets file paths via the Asset Library (see
+    resolve_asset_path) since assets aren't reliably named after their db id."""
     job_name = k8s_job_name("assemble", job.job_id)
-    loop_path = f"/assets/loops/{job.loop_ids[0]}.mp4"
-    track_path = f"/assets/tracks/{job.track_ids[0]}.mp3"
+    loop_path = resolve_asset_path("loops", job.loop_ids[0])
+    track_path = resolve_asset_path("tracks", job.track_ids[0])
     container = client.V1Container(
         name="assemble",
-        image="render-service:v8",
+        image="render-service:v9",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, track_path, job.category, job.output_path],
         volume_mounts=[
@@ -131,7 +143,7 @@ def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str
     job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v8",
+        image="render-service:v9",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
             "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2]), check=True)"
