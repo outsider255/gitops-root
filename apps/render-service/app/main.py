@@ -84,7 +84,9 @@ def download_to_assets(req: DownloadToAssetsRequest):
         raise HTTPException(status_code=400, detail=f"target_path must be under {ASSETS_BASE}")
 
     os.makedirs(os.path.dirname(real_target), exist_ok=True)
-    urllib.request.urlretrieve(req.source_url, real_target)
+    request = urllib.request.Request(req.source_url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(request) as response, open(real_target, "wb") as f:
+        f.write(response.read())
     return {"target_path": req.target_path, "downloaded": True}
 
 
