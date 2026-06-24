@@ -165,3 +165,84 @@ def test_audio_trim_cmd_uses_atrim_and_afade():
     filter_arg = cmd[cmd.index("-filter_complex") + 1]
     assert "atrim=30.0:70.0" in filter_arg
     assert "afade" in filter_arg
+
+
+def test_loop_to_duration_cmd_stream_loops_both_inputs():
+    cmd = fa.build_loop_to_duration_cmd("/tmp/video.mp4", "/tmp/audio.mp3", 7200.0, "/tmp/final.mp4")
+    loop_indices = [i for i, a in enumerate(cmd) if a == "-stream_loop"]
+    assert len(loop_indices) == 2
+    for i in loop_indices:
+        assert cmd[i + 1] == "-1"
+
+
+def test_loop_to_duration_cmd_caps_with_t_flag():
+    cmd = fa.build_loop_to_duration_cmd("/tmp/video.mp4", "/tmp/audio.mp3", 7200.0, "/tmp/final.mp4")
+    assert "-t" in cmd
+    assert cmd[cmd.index("-t") + 1] == "7200.0"
+
+
+def test_loop_to_duration_cmd_stream_copies_video_and_encodes_audio():
+    cmd = fa.build_loop_to_duration_cmd("/tmp/video.mp4", "/tmp/audio.mp3", 7200.0, "/tmp/final.mp4")
+    assert "-c:v" in cmd
+    assert cmd[cmd.index("-c:v") + 1] == "copy"
+    assert "-c:a" in cmd
+    assert cmd[cmd.index("-c:a") + 1] == "aac"
+
+
+def test_loop_to_duration_cmd_inputs_video_then_audio():
+    cmd = fa.build_loop_to_duration_cmd("/tmp/video.mp4", "/tmp/audio.mp3", 7200.0, "/tmp/final.mp4")
+    assert cmd.index("/tmp/video.mp4") < cmd.index("/tmp/audio.mp3")
+
+
+def test_loop_to_duration_cmd_ends_with_output_path():
+    cmd = fa.build_loop_to_duration_cmd("/tmp/video.mp4", "/tmp/audio.mp3", 7200.0, "/tmp/final.mp4")
+    assert cmd[-1] == "/tmp/final.mp4"
+
+
+def test_audio_crossfade_chain_cmd_chains_acrossfade_across_all_tracks():
+    cmd = fa.build_audio_crossfade_chain_cmd(
+        ["/tmp/t1.mp3", "/tmp/t2.mp3", "/tmp/t3.mp3"], "/tmp/combined.mp3"
+    )
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert filter_arg.count("acrossfade") == 2
+    for t in ["/tmp/t1.mp3", "/tmp/t2.mp3", "/tmp/t3.mp3"]:
+        assert t in cmd
+
+
+def test_audio_crossfade_chain_cmd_respects_crossfade_duration():
+    cmd = fa.build_audio_crossfade_chain_cmd(
+        ["/tmp/t1.mp3", "/tmp/t2.mp3"], "/tmp/combined.mp3", crossfade_s=5.0
+    )
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert "d=5.0" in filter_arg
+
+
+def test_audio_crossfade_chain_cmd_single_track_passthrough():
+    cmd = fa.build_audio_crossfade_chain_cmd(["/tmp/t1.mp3"], "/tmp/combined.mp3")
+    assert "/tmp/t1.mp3" in cmd
+    assert cmd[-1] == "/tmp/combined.mp3"
+
+
+def test_audio_crossfade_chain_cmd_ends_with_output_path():
+    cmd = fa.build_audio_crossfade_chain_cmd(["/tmp/t1.mp3", "/tmp/t2.mp3"], "/tmp/combined.mp3")
+    assert cmd[-1] == "/tmp/combined.mp3"
+
+
+def test_effects_cmd_applies_vignette_color_grade_and_grain():
+    cmd = fa.build_effects_cmd("/tmp/composited.mp4", "/tmp/effects.mp4")
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert "vignette" in filter_arg
+    assert "eq=" in filter_arg
+    assert "noise=" in filter_arg
+
+
+def test_effects_cmd_ends_with_output_path():
+    cmd = fa.build_effects_cmd("/tmp/composited.mp4", "/tmp/effects.mp4")
+    assert cmd[-1] == "/tmp/effects.mp4"
+
+
+def test_effects_cmd_is_a_single_input_single_output_filter_chain():
+    cmd = fa.build_effects_cmd("/tmp/composited.mp4", "/tmp/effects.mp4")
+    assert cmd.count("/tmp/composited.mp4") == 1
+    assert "-map" in cmd
+    assert cmd[cmd.index("-map") + 1] == "[v]"

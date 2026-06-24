@@ -61,12 +61,12 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     resolve_asset_path) since assets aren't reliably named after their db id."""
     job_name = k8s_job_name("assemble", job.job_id)
     loop_path = resolve_asset_path("loops", job.loop_ids[0])
-    track_path = resolve_asset_path("tracks", job.track_ids[0])
+    track_paths = [resolve_asset_path("tracks", track_id) for track_id in job.track_ids]
     container = client.V1Container(
         name="assemble",
-        image="render-service:v11",
+        image="render-service:v12",
         command=["python3", "/app/assembly_entrypoint.py"],
-        args=[loop_path, track_path, job.category, job.output_path],
+        args=[loop_path, job.category, job.output_path, *track_paths],
         volume_mounts=[
             client.V1VolumeMount(name="outbox", mount_path="/outbox"),
             client.V1VolumeMount(name="assets", mount_path="/assets"),
@@ -143,7 +143,7 @@ def build_clip_job_spec(req) -> "client.V1Job":
     job_name = k8s_job_name("clip", req.job_id)
     container = client.V1Container(
         name="clip",
-        image="render-service:v11",
+        image="render-service:v12",
         command=["python3", "/app/clip_entrypoint.py"],
         args=[
             req.main_loop_path, req.main_track_path,
@@ -203,10 +203,10 @@ def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str
     job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v11",
+        image="render-service:v12",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
-            "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2]), check=True)"
+            "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2], zoom_target=1.0), check=True)"
         )],
         args=[still_path, output_path],
         volume_mounts=[client.V1VolumeMount(name="assets", mount_path="/assets")],

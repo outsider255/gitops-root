@@ -159,6 +159,75 @@ def build_audio_trim_cmd(input_path: str, output_path: str, start_s: float, dura
     ]
 
 
+def build_effects_cmd(
+    input_path: str,
+    output_path: str,
+    vignette_angle: str = "PI/5",
+    saturation: float = 1.08,
+    contrast: float = 1.04,
+    grain_strength: int = 8,
+) -> list[str]:
+    """Replaces camera motion with simple static-loop post-effects:
+    a subtle vignette, a light color grade, and low-strength film grain
+    (noise=allf=t+u keeps it temporal+uniform so it reads as grain, not
+    flat static)."""
+    filter_complex = (
+        f"[0:v]vignette={vignette_angle},"
+        f"eq=saturation={saturation}:contrast={contrast},"
+        f"noise=alls={grain_strength}:allf=t+u[v]"
+    )
+    return [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-filter_complex", filter_complex,
+        "-map", "[v]",
+        output_path,
+    ]
+
+
+def build_loop_to_duration_cmd(video_path: str, audio_path: str, target_duration_s: float, output_path: str) -> list[str]:
+    """make_lofi.ps1's actual technique: -stream_loop -1 repeats each input
+    indefinitely without building a giant concat manifest, -t caps the
+    output once both streams reach target_duration_s. Video stays
+    -c:v copy (no re-encode, same perf characteristic as the reference
+    script); audio is re-encoded to aac like the rest of this pipeline."""
+    return [
+        "ffmpeg", "-y",
+        "-stream_loop", "-1", "-i", video_path,
+        "-stream_loop", "-1", "-i", audio_path,
+        "-c:v", "copy", "-c:a", "aac",
+        "-t", str(target_duration_s),
+        output_path,
+    ]
+
+
+def build_audio_crossfade_chain_cmd(track_paths: list[str], output_path: str, crossfade_s: float = 3.0) -> list[str]:
+    """Stitches N distinct tracks into one combined audio file via chained
+    acrossfade (mirrors make_lofi.ps1's acrossfade=d=3:c1=tri:c2=tri),
+    giving real variety before build_loop_to_duration_cmd loops the result
+    to fill the full runtime. A single track passes through untouched."""
+    cmd = ["ffmpeg", "-y"]
+    for path in track_paths:
+        cmd += ["-i", path]
+
+    if len(track_paths) == 1:
+        cmd += [output_path]
+        return cmd
+
+    filter_parts = []
+    prev_label = "0:a"
+    for i in range(1, len(track_paths)):
+        out_label = f"af{i}" if i < len(track_paths) - 1 else "a"
+        filter_parts.append(
+            f"[{prev_label}][{i}:a]acrossfade=d={crossfade_s}:c1=tri:c2=tri[{out_label}]"
+        )
+        prev_label = out_label
+
+    filter_complex = ";".join(filter_parts)
+    cmd += ["-filter_complex", filter_complex, "-map", "[a]", output_path]
+    return cmd
+
+
 def build_concat_cmd(inputs_txt_path: str, audio_path: str, output_path: str) -> list[str]:
     """Resource-safe compile: never re-encodes raw frames (-c:v copy),
     so a 1-2 hour output renders near-instantly regardless of host CPU
