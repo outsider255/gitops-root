@@ -1,4 +1,5 @@
 import os
+import urllib.request
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
@@ -8,6 +9,7 @@ import job_dispatch
 app = FastAPI()
 
 OUTBOX_BASE = "/outbox/"
+ASSETS_BASE = "/assets/"
 
 
 class OverlayConfig(BaseModel):
@@ -31,6 +33,11 @@ class MotionConvertRequest(BaseModel):
     loop_id: str
     still_path: str
     category: str
+
+
+class DownloadToAssetsRequest(BaseModel):
+    source_url: str
+    target_path: str
 
 
 @app.post("/render", status_code=202)
@@ -67,6 +74,18 @@ async def process_motion_convert(req: MotionConvertRequest, background_tasks: Ba
     job_dispatch.JOBS[job_id]["status"] = "queued"
     background_tasks.add_task(job_dispatch.watch_motion_convert_job, job_id, output_path)
     return {"job_id": job_id, "job_name": job_name}
+
+
+@app.post("/process/download-to-assets")
+def download_to_assets(req: DownloadToAssetsRequest):
+    real_base = os.path.realpath(ASSETS_BASE)
+    real_target = os.path.realpath(req.target_path)
+    if not (real_target == real_base or real_target.startswith(real_base + os.sep)):
+        raise HTTPException(status_code=400, detail=f"target_path must be under {ASSETS_BASE}")
+
+    os.makedirs(os.path.dirname(real_target), exist_ok=True)
+    urllib.request.urlretrieve(req.source_url, real_target)
+    return {"target_path": req.target_path, "downloaded": True}
 
 
 @app.get("/status/{job_id}")
