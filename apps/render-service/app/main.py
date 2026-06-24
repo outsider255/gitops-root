@@ -49,7 +49,11 @@ async def render(job: JobSpec, background_tasks: BackgroundTasks):
 
     os.makedirs(os.path.dirname(real_target), exist_ok=True)
 
-    job_dispatch.JOBS[job.job_id] = {"status": "accepted", "output_path": None}
+    job_dispatch.JOBS[job.job_id] = {
+        "status": "accepted",
+        "output_path": None,
+        "requested_output_path": job.output_path,
+    }
     try:
         job_name = await job_dispatch.dispatch_assembly_job(job)
         job_dispatch.JOBS[job.job_id]["job_name"] = job_name
@@ -68,7 +72,11 @@ async def process_motion_convert(req: MotionConvertRequest, background_tasks: Ba
     job_id = f"motionconvert-{req.loop_id}"
     output_path = f"/assets/loops/{req.loop_id}.mp4"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    job_dispatch.JOBS[job_id] = {"status": "accepted", "output_path": None}
+    job_dispatch.JOBS[job_id] = {
+        "status": "accepted",
+        "output_path": None,
+        "requested_output_path": output_path,
+    }
     job_name = await job_dispatch.dispatch_motion_convert_job(job_id, req.still_path, output_path)
     job_dispatch.JOBS[job_id]["job_name"] = job_name
     job_dispatch.JOBS[job_id]["status"] = "queued"
@@ -103,6 +111,8 @@ async def status(job_id: str):
         raise HTTPException(status_code=502, detail=str(e))
 
     job_dispatch.JOBS[job_id]["status"] = phase
+    if phase == "completed" and not job_dispatch.JOBS[job_id].get("output_path"):
+        job_dispatch.JOBS[job_id]["output_path"] = job_dispatch.JOBS[job_id]["requested_output_path"]
     return {"job_id": job_id, **job_dispatch.JOBS[job_id]}
 
 
