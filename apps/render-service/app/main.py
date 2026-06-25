@@ -50,6 +50,23 @@ class ClipRequest(BaseModel):
     output_path: str
 
 
+class UploadYouTubeRequest(BaseModel):
+    job_id: str
+    file_path: str
+    title: str
+    description: str
+    access_token: str
+    privacy_status: str = "private"
+    category_id: str = "22"
+
+
+class UploadOneDriveRequest(BaseModel):
+    job_id: str
+    file_path: str
+    target_path: str
+    access_token: str
+
+
 @app.post("/render", status_code=202)
 async def render(job: JobSpec, background_tasks: BackgroundTasks):
     real_base = os.path.realpath(OUTBOX_BASE)
@@ -98,6 +115,34 @@ async def render_clip(req: ClipRequest, background_tasks: BackgroundTasks):
     return {"job_id": req.job_id, "job_name": job_name}
 
 
+@app.post("/upload/youtube", status_code=202)
+async def upload_youtube(req: UploadYouTubeRequest, background_tasks: BackgroundTasks):
+    real_base = os.path.realpath(OUTBOX_BASE)
+    real_target = os.path.realpath(req.file_path)
+    if not real_target.startswith(real_base + os.sep):
+        raise HTTPException(status_code=400, detail=f"file_path must be under {OUTBOX_BASE}")
+    if not os.path.exists(real_target):
+        raise HTTPException(status_code=404, detail="file not found on disk")
+
+    job_dispatch.JOBS[req.job_id] = {"status": "queued"}
+    background_tasks.add_task(job_dispatch.upload_youtube, req)
+    return {"job_id": req.job_id, "status": "accepted"}
+
+
+@app.post("/upload/onedrive", status_code=202)
+async def upload_onedrive(req: UploadOneDriveRequest, background_tasks: BackgroundTasks):
+    real_base = os.path.realpath(OUTBOX_BASE)
+    real_target = os.path.realpath(req.file_path)
+    if not real_target.startswith(real_base + os.sep):
+        raise HTTPException(status_code=400, detail=f"file_path must be under {OUTBOX_BASE}")
+    if not os.path.exists(real_target):
+        raise HTTPException(status_code=404, detail="file not found on disk")
+
+    job_dispatch.JOBS[req.job_id] = {"status": "queued"}
+    background_tasks.add_task(job_dispatch.upload_onedrive, req)
+    return {"job_id": req.job_id, "status": "accepted"}
+
+
 @app.post("/process/motion-convert", status_code=202)
 async def process_motion_convert(req: MotionConvertRequest, background_tasks: BackgroundTasks):
     job_id = f"motionconvert-{req.loop_id}"
@@ -133,6 +178,9 @@ def download_to_assets(req: DownloadToAssetsRequest):
 async def status(job_id: str):
     if job_id not in job_dispatch.JOBS:
         raise HTTPException(status_code=404, detail="unknown job_id")
+
+    if "job_name" not in job_dispatch.JOBS[job_id]:
+        return {"job_id": job_id, **job_dispatch.JOBS[job_id]}
 
     job_name = job_dispatch.JOBS[job_id]["job_name"]
     try:

@@ -6,6 +6,7 @@ job_dispatch.py is a real file in the built image, not a ConfigMap entry.
 """
 import sys
 import os
+import json
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "app"))
 
@@ -120,7 +121,7 @@ def test_build_assembly_job_spec_uses_render_service_image(monkeypatch):
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v14"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v15"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets(monkeypatch):
@@ -224,7 +225,7 @@ class _FakeClipRequest:
 
 def test_build_clip_job_spec_uses_render_service_image():
     spec = main.build_clip_job_spec(_FakeClipRequest())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v14"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v15"
 
 
 def test_build_clip_job_spec_mounts_outbox_and_assets():
@@ -255,7 +256,7 @@ def test_build_motion_convert_job_spec_uses_render_service_image():
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v14"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v15"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():
@@ -276,6 +277,90 @@ def test_build_motion_convert_job_spec_passes_still_and_output_paths_as_args():
     )
     args = spec.spec.template.spec.containers[0].args
     assert args == ["/assets/stills/still_001.png", "/assets/loops/loop_dummy_001.mp4"]
+
+
+class _FakeUrlResponse:
+    def __init__(self, body=b"{}", headers=None):
+        self._body = body
+        self.headers = headers or {}
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _FakeYouTubeRequest:
+    job_id = "yt-test"
+    file_path = None  # set per-test via tmp_path
+    title = "Test Title"
+    description = "Test Description"
+    access_token = "fake-token"
+    privacy_status = "private"
+    category_id = "22"
+
+
+def test_upload_youtube_sync_initiates_session_then_streams_put(monkeypatch, tmp_path):
+    video_file = tmp_path / "video.mp4"
+    video_file.write_bytes(b"x" * 100)
+
+    req = _FakeYouTubeRequest()
+    req.file_path = str(video_file)
+
+    calls = []
+
+    def fake_urlopen(request, timeout=None):
+        calls.append(request)
+        if len(calls) == 1:
+            return _FakeUrlResponse(headers={"Location": "https://upload.example/session123"})
+        return _FakeUrlResponse(body=b'{"id": "real_video_id_123"}')
+
+    monkeypatch.setattr(main.urllib.request, "urlopen", fake_urlopen)
+
+    video_id = main.upload_youtube_sync(req)
+
+    assert video_id == "real_video_id_123"
+    assert len(calls) == 2
+    assert calls[0].full_url == "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status"
+    assert calls[1].full_url == "https://upload.example/session123"
+    assert calls[1].get_header("Content-length") == "100"
+
+
+class _FakeOneDriveRequest:
+    job_id = "od-test"
+    file_path = None
+    target_path = "MossMelodiesBackups/test.mp4"
+    access_token = "fake-token"
+
+
+def test_upload_onedrive_sync_chunks_large_file_into_fragments(monkeypatch, tmp_path):
+    video_file = tmp_path / "video.mp4"
+    total_size = int(main.ONEDRIVE_FRAGMENT_SIZE * 2.5)
+    video_file.write_bytes(b"y" * total_size)
+
+    req = _FakeOneDriveRequest()
+    req.file_path = str(video_file)
+
+    calls = []
+
+    def fake_urlopen(request, timeout=None):
+        calls.append(request)
+        if len(calls) == 1:
+            return _FakeUrlResponse(body=json.dumps({"uploadUrl": "https://upload.example/onedrive-session"}).encode())
+        return _FakeUrlResponse(body=b"")
+
+    monkeypatch.setattr(main.urllib.request, "urlopen", fake_urlopen)
+
+    main.upload_onedrive_sync(req)
+
+    fragment_calls = calls[1:]
+    assert len(fragment_calls) == 3
+    assert fragment_calls[0].get_header("Content-range") == f"bytes 0-{main.ONEDRIVE_FRAGMENT_SIZE - 1}/{total_size}"
+    assert fragment_calls[-1].get_header("Content-range").endswith(f"/{total_size}")
 
 
 def test_build_motion_convert_job_spec_has_correct_container_name_and_command():

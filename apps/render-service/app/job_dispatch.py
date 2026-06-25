@@ -1,4 +1,6 @@
 import urllib.request
+import urllib.parse
+import os
 import asyncio
 import json
 
@@ -8,6 +10,7 @@ from kubernetes.client.exceptions import ApiException
 
 NAMESPACE = "render-service"
 ASSET_LIBRARY_BASE = "http://asset-library-service.render-service.svc.cluster.local"
+ONEDRIVE_FRAGMENT_SIZE = 10 * 1024 * 1024
 JOBS = {}
 
 
@@ -64,7 +67,7 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     track_paths = [resolve_asset_path("tracks", track_id) for track_id in job.track_ids]
     container = client.V1Container(
         name="assemble",
-        image="render-service:v14",
+        image="render-service:v15",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, job.category, job.output_path, *track_paths],
         volume_mounts=[
@@ -156,7 +159,7 @@ def build_clip_job_spec(req) -> "client.V1Job":
     job_name = k8s_job_name("clip", req.job_id)
     container = client.V1Container(
         name="clip",
-        image="render-service:v14",
+        image="render-service:v15",
         command=["python3", "/app/clip_entrypoint.py"],
         args=[
             req.main_loop_path, req.main_track_path,
@@ -214,7 +217,7 @@ def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str
     job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v14",
+        image="render-service:v15",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
             "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2], zoom_target=1.0), check=True)"
@@ -263,3 +266,105 @@ async def watch_motion_convert_job(job_id: str, output_path: str):
     JOBS[job_id]["status"] = phase
     if phase == "completed":
         JOBS[job_id]["output_path"] = output_path
+
+
+def upload_youtube_sync(req) -> str:
+    """Streams the file straight from disk to YouTube's resumable upload
+    endpoint -- never buffers the whole (multi-GB, for a 2hr video) file
+    in memory. Runs in the render-service pod itself (no separate K8s
+    Job needed, this is I/O-bound not CPU-bound)."""
+    init_body = json.dumps({
+        "snippet": {"title": req.title, "description": req.description, "categoryId": req.category_id},
+        "status": {"privacyStatus": req.privacy_status},
+    }).encode()
+    init_req = urllib.request.Request(
+        "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+        data=init_body,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {req.access_token}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(init_req, timeout=30) as resp:
+        upload_url = resp.headers["Location"]
+
+    size = os.path.getsize(req.file_path)
+    with open(req.file_path, "rb") as f:
+        put_req = urllib.request.Request(
+            upload_url,
+            data=f,
+            method="PUT",
+            headers={
+                "Authorization": f"Bearer {req.access_token}",
+                "Content-Type": "video/mp4",
+                "Content-Length": str(size),
+            },
+        )
+        with urllib.request.urlopen(put_req, timeout=3600) as resp:
+            return json.loads(resp.read())["id"]
+
+
+async def upload_youtube(req):
+    JOBS[req.job_id]["status"] = "running"
+    try:
+        video_id = await run_in_threadpool(upload_youtube_sync, req)
+        JOBS[req.job_id]["status"] = "completed"
+        JOBS[req.job_id]["video_id"] = video_id
+        JOBS[req.job_id]["youtube_video_url"] = f"https://youtube.com/watch?v={video_id}"
+    except Exception as e:
+        JOBS[req.job_id]["status"] = "failed"
+        JOBS[req.job_id]["error"] = str(e)
+
+
+def upload_onedrive_sync(req) -> dict:
+    """OneDrive's upload-session PUTs must be chunked into fragments
+    (Microsoft Graph rejects very large single-shot PUTs) -- reads
+    ONEDRIVE_FRAGMENT_SIZE bytes at a time, so memory use stays flat
+    regardless of file size."""
+    safe_target = urllib.parse.quote(req.target_path)
+    init_req = urllib.request.Request(
+        f"https://graph.microsoft.com/v1.0/me/drive/root:/{safe_target}:/createUploadSession",
+        data=b"{}",
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {req.access_token}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(init_req, timeout=30) as resp:
+        upload_url = json.loads(resp.read())["uploadUrl"]
+
+    size = os.path.getsize(req.file_path)
+    result = None
+    with open(req.file_path, "rb") as f:
+        start = 0
+        while start < size:
+            chunk = f.read(ONEDRIVE_FRAGMENT_SIZE)
+            end = start + len(chunk) - 1
+            frag_req = urllib.request.Request(
+                upload_url,
+                data=chunk,
+                method="PUT",
+                headers={
+                    "Content-Length": str(len(chunk)),
+                    "Content-Range": f"bytes {start}-{end}/{size}",
+                },
+            )
+            with urllib.request.urlopen(frag_req, timeout=120) as resp:
+                body = resp.read()
+                if body:
+                    result = json.loads(body)
+            start = end + 1
+    return result
+
+
+async def upload_onedrive(req):
+    JOBS[req.job_id]["status"] = "running"
+    try:
+        result = await run_in_threadpool(upload_onedrive_sync, req)
+        JOBS[req.job_id]["status"] = "completed"
+        JOBS[req.job_id]["onedrive_result"] = result
+    except Exception as e:
+        JOBS[req.job_id]["status"] = "failed"
+        JOBS[req.job_id]["error"] = str(e)
