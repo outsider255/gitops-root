@@ -1,5 +1,6 @@
 import urllib.request
 import urllib.parse
+import urllib.error
 import os
 import asyncio
 import json
@@ -67,7 +68,7 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     track_paths = [resolve_asset_path("tracks", track_id) for track_id in job.track_ids]
     container = client.V1Container(
         name="assemble",
-        image="render-service:v18",
+        image="render-service:v19",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, job.category, job.output_path, *track_paths],
         volume_mounts=[
@@ -159,7 +160,7 @@ def build_clip_job_spec(req) -> "client.V1Job":
     job_name = k8s_job_name("clip", req.job_id)
     container = client.V1Container(
         name="clip",
-        image="render-service:v18",
+        image="render-service:v19",
         command=["python3", "/app/clip_entrypoint.py"],
         args=[
             req.main_loop_path, req.main_track_path,
@@ -218,7 +219,7 @@ def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str
     job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v18",
+        image="render-service:v19",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
             "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2], zoom_target=1.0, "
@@ -291,8 +292,11 @@ def upload_youtube_sync(req, access_token: str) -> str:
             "Content-Type": "application/json",
         },
     )
-    with urllib.request.urlopen(init_req, timeout=30) as resp:
-        upload_url = resp.headers["Location"]
+    try:
+        with urllib.request.urlopen(init_req, timeout=30) as resp:
+            upload_url = resp.headers["Location"]
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"YouTube init session failed ({e.code}): {e.read().decode(errors='replace')}") from e
 
     size = os.path.getsize(req.file_path)
     with open(req.file_path, "rb") as f:
@@ -306,8 +310,11 @@ def upload_youtube_sync(req, access_token: str) -> str:
                 "Content-Length": str(size),
             },
         )
-        with urllib.request.urlopen(put_req, timeout=3600) as resp:
-            return json.loads(resp.read())["id"]
+        try:
+            with urllib.request.urlopen(put_req, timeout=3600) as resp:
+                return json.loads(resp.read())["id"]
+        except urllib.error.HTTPError as e:
+            raise RuntimeError(f"YouTube upload PUT failed ({e.code}): {e.read().decode(errors='replace')}") from e
 
 
 async def upload_youtube(req, access_token: str):
@@ -337,8 +344,11 @@ def upload_onedrive_sync(req, access_token: str) -> dict:
             "Content-Type": "application/json",
         },
     )
-    with urllib.request.urlopen(init_req, timeout=30) as resp:
-        upload_url = json.loads(resp.read())["uploadUrl"]
+    try:
+        with urllib.request.urlopen(init_req, timeout=30) as resp:
+            upload_url = json.loads(resp.read())["uploadUrl"]
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"OneDrive init session failed ({e.code}): {e.read().decode(errors='replace')}") from e
 
     size = os.path.getsize(req.file_path)
     result = None
@@ -356,10 +366,13 @@ def upload_onedrive_sync(req, access_token: str) -> dict:
                     "Content-Range": f"bytes {start}-{end}/{size}",
                 },
             )
-            with urllib.request.urlopen(frag_req, timeout=120) as resp:
-                body = resp.read()
-                if body:
-                    result = json.loads(body)
+            try:
+                with urllib.request.urlopen(frag_req, timeout=120) as resp:
+                    body = resp.read()
+                    if body:
+                        result = json.loads(body)
+            except urllib.error.HTTPError as e:
+                raise RuntimeError(f"OneDrive fragment PUT failed ({e.code}): {e.read().decode(errors='replace')}") from e
             start = end + 1
     return result
 
