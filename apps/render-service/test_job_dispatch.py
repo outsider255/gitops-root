@@ -121,7 +121,7 @@ def test_build_assembly_job_spec_uses_render_service_image(monkeypatch):
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v19"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v20"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets(monkeypatch):
@@ -225,7 +225,7 @@ class _FakeClipRequest:
 
 def test_build_clip_job_spec_uses_render_service_image():
     spec = main.build_clip_job_spec(_FakeClipRequest())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v19"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v20"
 
 
 def test_build_clip_job_spec_mounts_outbox_and_assets():
@@ -256,7 +256,7 @@ def test_build_motion_convert_job_spec_uses_render_service_image():
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v19"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v20"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():
@@ -385,3 +385,36 @@ def test_build_motion_convert_job_spec_has_correct_container_name_and_command():
     assert command[1] == "-c"
     assert "ffmpeg_assembly" in command[2]
     assert "build_ken_burns_cmd" in command[2]
+
+
+def test_probe_duration_s_parses_ffprobe_stdout(monkeypatch):
+    calls = []
+
+    class _FakeCompletedProcess:
+        stdout = "123.456000\n"
+
+    def fake_run(cmd, capture_output, text, check, timeout=None):
+        calls.append(cmd)
+        return _FakeCompletedProcess()
+
+    monkeypatch.setattr(main.subprocess, "run", fake_run)
+
+    duration = main.probe_duration_s("/assets/tracks/manual-1.mp3")
+
+    assert duration == 123.456
+    assert calls[0][0] == "ffprobe"
+    assert "/assets/tracks/manual-1.mp3" in calls[0]
+
+
+def test_probe_duration_s_raises_on_unparseable_output(monkeypatch):
+    class _FakeCompletedProcess:
+        stdout = "N/A\n"
+
+    monkeypatch.setattr(
+        main.subprocess, "run",
+        lambda cmd, capture_output, text, check, timeout=None: _FakeCompletedProcess()
+    )
+
+    import pytest
+    with pytest.raises(ValueError):
+        main.probe_duration_s("/assets/tracks/broken.mp3")

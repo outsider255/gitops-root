@@ -1,4 +1,5 @@
 import os
+import subprocess
 import urllib.request
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
 from fastapi.responses import FileResponse
@@ -40,6 +41,10 @@ class MotionConvertRequest(BaseModel):
 class DownloadToAssetsRequest(BaseModel):
     source_url: str
     target_path: str
+
+
+class ProbeDurationRequest(BaseModel):
+    file_path: str
 
 
 class ClipRequest(BaseModel):
@@ -186,6 +191,22 @@ def download_to_assets(req: DownloadToAssetsRequest):
     with urllib.request.urlopen(request) as response, open(real_target, "wb") as f:
         f.write(response.read())
     return {"target_path": req.target_path, "downloaded": True}
+
+
+@app.post("/process/probe-duration")
+def process_probe_duration(req: ProbeDurationRequest):
+    real_base = os.path.realpath(ASSETS_BASE)
+    real_target = os.path.realpath(req.file_path)
+    if not real_target.startswith(real_base + os.sep):
+        raise HTTPException(status_code=400, detail=f"file_path must be under {ASSETS_BASE}")
+    if not os.path.exists(real_target):
+        raise HTTPException(status_code=404, detail="file not found on disk")
+
+    try:
+        duration_s = job_dispatch.probe_duration_s(real_target)
+    except (subprocess.CalledProcessError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"could not probe duration: {e}")
+    return {"duration_s": duration_s}
 
 
 @app.get("/status/{job_id}")
