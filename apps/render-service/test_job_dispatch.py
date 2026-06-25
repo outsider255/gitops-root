@@ -69,6 +69,41 @@ def test_get_job_phase_function_exists_and_is_callable():
     assert callable(main.get_job_phase)
 
 
+class _FakeBatchAlwaysRaises:
+    def __init__(self, status):
+        self._status = status
+
+    def create_namespaced_job(self, namespace, body):
+        from kubernetes.client.exceptions import ApiException
+        raise ApiException(status=self._status)
+
+
+class _FakeBatchSucceeds:
+    def create_namespaced_job(self, namespace, body):
+        pass
+
+
+class _FakeJobSpec:
+    metadata = type("M", (), {"name": "assemble-fake"})()
+
+
+def test_create_job_idempotent_treats_409_as_success():
+    name = main.create_job_idempotent(_FakeBatchAlwaysRaises(409), _FakeJobSpec())
+    assert name == "assemble-fake"
+
+
+def test_create_job_idempotent_reraises_non_409_errors():
+    from kubernetes.client.exceptions import ApiException
+    import pytest
+    with pytest.raises(ApiException):
+        main.create_job_idempotent(_FakeBatchAlwaysRaises(500), _FakeJobSpec())
+
+
+def test_create_job_idempotent_returns_name_on_real_success():
+    name = main.create_job_idempotent(_FakeBatchSucceeds(), _FakeJobSpec())
+    assert name == "assemble-fake"
+
+
 def _stub_resolve_asset_path(kind, asset_id):
     ext = "mp4" if kind == "loops" else "mp3"
     return f"/assets/{kind}/{asset_id}.{ext}"
@@ -85,7 +120,7 @@ def test_build_assembly_job_spec_uses_render_service_image(monkeypatch):
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v13"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v14"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets(monkeypatch):
@@ -189,7 +224,7 @@ class _FakeClipRequest:
 
 def test_build_clip_job_spec_uses_render_service_image():
     spec = main.build_clip_job_spec(_FakeClipRequest())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v13"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v14"
 
 
 def test_build_clip_job_spec_mounts_outbox_and_assets():
@@ -220,7 +255,7 @@ def test_build_motion_convert_job_spec_uses_render_service_image():
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v13"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v14"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():
