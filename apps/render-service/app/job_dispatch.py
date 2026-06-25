@@ -67,7 +67,7 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     track_paths = [resolve_asset_path("tracks", track_id) for track_id in job.track_ids]
     container = client.V1Container(
         name="assemble",
-        image="render-service:v16",
+        image="render-service:v17",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, job.category, job.output_path, *track_paths],
         volume_mounts=[
@@ -159,7 +159,7 @@ def build_clip_job_spec(req) -> "client.V1Job":
     job_name = k8s_job_name("clip", req.job_id)
     container = client.V1Container(
         name="clip",
-        image="render-service:v16",
+        image="render-service:v17",
         command=["python3", "/app/clip_entrypoint.py"],
         args=[
             req.main_loop_path, req.main_track_path,
@@ -217,7 +217,7 @@ def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str
     job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v16",
+        image="render-service:v17",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
             "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2], zoom_target=1.0), check=True)"
@@ -268,11 +268,14 @@ async def watch_motion_convert_job(job_id: str, output_path: str):
         JOBS[job_id]["output_path"] = output_path
 
 
-def upload_youtube_sync(req) -> str:
+def upload_youtube_sync(req, access_token: str) -> str:
     """Streams the file straight from disk to YouTube's resumable upload
     endpoint -- never buffers the whole (multi-GB, for a 2hr video) file
     in memory. Runs in the render-service pod itself (no separate K8s
-    Job needed, this is I/O-bound not CPU-bound)."""
+    Job needed, this is I/O-bound not CPU-bound). access_token is passed
+    in separately (from the Authorization header n8n's predefinedCredentialType
+    HTTP node attaches) rather than carried on req, so it's never a field
+    on a model that gets logged/persisted anywhere."""
     init_body = json.dumps({
         "snippet": {"title": req.title, "description": req.description, "categoryId": req.category_id},
         "status": {"privacyStatus": req.privacy_status},
@@ -282,7 +285,7 @@ def upload_youtube_sync(req) -> str:
         data=init_body,
         method="POST",
         headers={
-            "Authorization": f"Bearer {req.access_token}",
+            "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         },
     )
@@ -296,7 +299,7 @@ def upload_youtube_sync(req) -> str:
             data=f,
             method="PUT",
             headers={
-                "Authorization": f"Bearer {req.access_token}",
+                "Authorization": f"Bearer {access_token}",
                 "Content-Type": "video/mp4",
                 "Content-Length": str(size),
             },
@@ -305,10 +308,10 @@ def upload_youtube_sync(req) -> str:
             return json.loads(resp.read())["id"]
 
 
-async def upload_youtube(req):
+async def upload_youtube(req, access_token: str):
     JOBS[req.job_id]["status"] = "running"
     try:
-        video_id = await run_in_threadpool(upload_youtube_sync, req)
+        video_id = await run_in_threadpool(upload_youtube_sync, req, access_token)
         JOBS[req.job_id]["status"] = "completed"
         JOBS[req.job_id]["video_id"] = video_id
         JOBS[req.job_id]["youtube_video_url"] = f"https://youtube.com/watch?v={video_id}"
@@ -317,7 +320,7 @@ async def upload_youtube(req):
         JOBS[req.job_id]["error"] = str(e)
 
 
-def upload_onedrive_sync(req) -> dict:
+def upload_onedrive_sync(req, access_token: str) -> dict:
     """OneDrive's upload-session PUTs must be chunked into fragments
     (Microsoft Graph rejects very large single-shot PUTs) -- reads
     ONEDRIVE_FRAGMENT_SIZE bytes at a time, so memory use stays flat
@@ -328,7 +331,7 @@ def upload_onedrive_sync(req) -> dict:
         data=b"{}",
         method="POST",
         headers={
-            "Authorization": f"Bearer {req.access_token}",
+            "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         },
     )
@@ -359,10 +362,10 @@ def upload_onedrive_sync(req) -> dict:
     return result
 
 
-async def upload_onedrive(req):
+async def upload_onedrive(req, access_token: str):
     JOBS[req.job_id]["status"] = "running"
     try:
-        result = await run_in_threadpool(upload_onedrive_sync, req)
+        result = await run_in_threadpool(upload_onedrive_sync, req, access_token)
         JOBS[req.job_id]["status"] = "completed"
         JOBS[req.job_id]["onedrive_result"] = result
     except Exception as e:

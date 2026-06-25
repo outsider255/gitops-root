@@ -121,7 +121,7 @@ def test_build_assembly_job_spec_uses_render_service_image(monkeypatch):
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v16"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v17"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets(monkeypatch):
@@ -225,7 +225,7 @@ class _FakeClipRequest:
 
 def test_build_clip_job_spec_uses_render_service_image():
     spec = main.build_clip_job_spec(_FakeClipRequest())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v16"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v17"
 
 
 def test_build_clip_job_spec_mounts_outbox_and_assets():
@@ -256,7 +256,7 @@ def test_build_motion_convert_job_spec_uses_render_service_image():
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v16"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v17"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():
@@ -299,7 +299,6 @@ class _FakeYouTubeRequest:
     file_path = None  # set per-test via tmp_path
     title = "Test Title"
     description = "Test Description"
-    access_token = "fake-token"
     privacy_status = "private"
     category_id = "22"
 
@@ -321,7 +320,7 @@ def test_upload_youtube_sync_initiates_session_then_streams_put(monkeypatch, tmp
 
     monkeypatch.setattr(main.urllib.request, "urlopen", fake_urlopen)
 
-    video_id = main.upload_youtube_sync(req)
+    video_id = main.upload_youtube_sync(req, "fake-token")
 
     assert video_id == "real_video_id_123"
     assert len(calls) == 2
@@ -334,7 +333,6 @@ class _FakeOneDriveRequest:
     job_id = "od-test"
     file_path = None
     target_path = "MossMelodiesBackups/test.mp4"
-    access_token = "fake-token"
 
 
 def test_upload_onedrive_sync_chunks_large_file_into_fragments(monkeypatch, tmp_path):
@@ -355,7 +353,7 @@ def test_upload_onedrive_sync_chunks_large_file_into_fragments(monkeypatch, tmp_
 
     monkeypatch.setattr(main.urllib.request, "urlopen", fake_urlopen)
 
-    main.upload_onedrive_sync(req)
+    main.upload_onedrive_sync(req, "fake-token")
 
     fragment_calls = calls[1:]
     assert len(fragment_calls) == 3

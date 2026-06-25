@@ -55,7 +55,6 @@ class UploadYouTubeRequest(BaseModel):
     file_path: str
     title: str
     description: str
-    access_token: str
     privacy_status: str = "private"
     category_id: str = "22"
 
@@ -64,7 +63,6 @@ class UploadOneDriveRequest(BaseModel):
     job_id: str
     file_path: str
     target_path: str
-    access_token: str
 
 
 @app.post("/render", status_code=202)
@@ -115,21 +113,22 @@ async def render_clip(req: ClipRequest, background_tasks: BackgroundTasks):
     return {"job_id": req.job_id, "job_name": job_name}
 
 
-@app.get("/echo-bearer-token")
-def echo_bearer_token(authorization: str = Header(None)):
-    """n8n's Code node sandbox has no API to read a credential's raw
-    access token directly. Instead, an HTTP Request node configured with
-    the existing OAuth2 credential (predefinedCredentialType) calls this
-    endpoint -- n8n attaches a valid, auto-refreshed Bearer token to the
-    request, which we just hand back so it can be forwarded to the real
-    upload dispatch without n8n ever buffering the video file itself."""
+def _bearer_token(authorization: Optional[str]) -> str:
+    """The upload-dispatch HTTP nodes in n8n use predefinedCredentialType
+    (the same existing YouTube/OneDrive OAuth2 credential used everywhere
+    else in this pipeline) so n8n attaches a valid, auto-refreshed Bearer
+    token to the request itself -- the token only ever exists as this
+    header (n8n doesn't persist credential-attached headers in its
+    execution log the way it would a JSON body field), never as data we
+    echo back or store."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="missing bearer token")
-    return {"access_token": authorization[len("Bearer "):]}
+    return authorization[len("Bearer "):]
 
 
 @app.post("/upload/youtube", status_code=202)
-async def upload_youtube(req: UploadYouTubeRequest, background_tasks: BackgroundTasks):
+async def upload_youtube(req: UploadYouTubeRequest, background_tasks: BackgroundTasks, authorization: str = Header(None)):
+    access_token = _bearer_token(authorization)
     real_base = os.path.realpath(OUTBOX_BASE)
     real_target = os.path.realpath(req.file_path)
     if not real_target.startswith(real_base + os.sep):
@@ -138,12 +137,13 @@ async def upload_youtube(req: UploadYouTubeRequest, background_tasks: Background
         raise HTTPException(status_code=404, detail="file not found on disk")
 
     job_dispatch.JOBS[req.job_id] = {"status": "queued"}
-    background_tasks.add_task(job_dispatch.upload_youtube, req)
+    background_tasks.add_task(job_dispatch.upload_youtube, req, access_token)
     return {"job_id": req.job_id, "status": "accepted"}
 
 
 @app.post("/upload/onedrive", status_code=202)
-async def upload_onedrive(req: UploadOneDriveRequest, background_tasks: BackgroundTasks):
+async def upload_onedrive(req: UploadOneDriveRequest, background_tasks: BackgroundTasks, authorization: str = Header(None)):
+    access_token = _bearer_token(authorization)
     real_base = os.path.realpath(OUTBOX_BASE)
     real_target = os.path.realpath(req.file_path)
     if not real_target.startswith(real_base + os.sep):
@@ -152,7 +152,7 @@ async def upload_onedrive(req: UploadOneDriveRequest, background_tasks: Backgrou
         raise HTTPException(status_code=404, detail="file not found on disk")
 
     job_dispatch.JOBS[req.job_id] = {"status": "queued"}
-    background_tasks.add_task(job_dispatch.upload_onedrive, req)
+    background_tasks.add_task(job_dispatch.upload_onedrive, req, access_token)
     return {"job_id": req.job_id, "status": "accepted"}
 
 
