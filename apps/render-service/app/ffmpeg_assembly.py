@@ -35,17 +35,27 @@ def build_pingpong_loop_cmd(input_path: str, output_path: str) -> list[str]:
     ]
 
 
-def build_ken_burns_cmd(image_path: str, output_path: str, duration_s: float = 8.0, zoom_target: float = 1.1) -> list[str]:
+def build_ken_burns_cmd(
+    image_path: str,
+    output_path: str,
+    duration_s: float = 8.0,
+    zoom_target: float = 1.1,
+    output_w: int = 1920,
+    output_h: int = 1080,
+) -> list[str]:
     """Converts a static still into a slow-zoom video loop -- the
     fallback motion technique for Nano Banana Pro stills (no Veo
     video-generation call needed). zoompan's d= (frame count) controls
     duration at a fixed fps; -t additionally caps output length so the
-    two stay consistent regardless of zoompan's internal frame math."""
+    two stay consistent regardless of zoompan's internal frame math.
+    output_w/output_h must match the still's actual orientation (a
+    vertical Shorts still squashed into a hardcoded 1920x1080 frame
+    would silently produce a horizontal loop)."""
     fps = 25
     frame_count = int(duration_s * fps)
     zoom_expr = f"zoom+({zoom_target}-1)/{frame_count}"
     filter_complex = (
-        f"[0:v]zoompan=z='{zoom_expr}':d={frame_count}:s=1920x1080:fps={fps}[v]"
+        f"[0:v]zoompan=z='{zoom_expr}':d={frame_count}:s={output_w}x{output_h}:fps={fps}[v]"
     )
     return [
         "ffmpeg", "-y",

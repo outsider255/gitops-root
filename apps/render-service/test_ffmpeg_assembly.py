@@ -66,6 +66,18 @@ def test_ken_burns_cmd_respects_zoom_target():
     assert "1.25" in filter_arg
 
 
+def test_ken_burns_cmd_defaults_to_1920x1080():
+    cmd = fa.build_ken_burns_cmd("/assets/stills/77.jpg", "/tmp/loop_77.mp4")
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert "s=1920x1080" in filter_arg
+
+
+def test_ken_burns_cmd_respects_vertical_output_dims():
+    cmd = fa.build_ken_burns_cmd("/assets/stills/77.jpg", "/tmp/loop_77.mp4", output_w=1080, output_h=1920)
+    filter_arg = cmd[cmd.index("-filter_complex") + 1]
+    assert "s=1080x1920" in filter_arg
+
+
 def test_pick_random_overlay_returns_a_file_from_dir(tmp_path):
     (tmp_path / "rain.mp4").write_bytes(b"x")
     (tmp_path / "snow.mp4").write_bytes(b"x")

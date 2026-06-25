@@ -121,7 +121,7 @@ def test_build_assembly_job_spec_uses_render_service_image(monkeypatch):
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v17"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v18"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets(monkeypatch):
@@ -225,7 +225,7 @@ class _FakeClipRequest:
 
 def test_build_clip_job_spec_uses_render_service_image():
     spec = main.build_clip_job_spec(_FakeClipRequest())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v17"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v18"
 
 
 def test_build_clip_job_spec_mounts_outbox_and_assets():
@@ -256,7 +256,7 @@ def test_build_motion_convert_job_spec_uses_render_service_image():
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v17"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v18"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():
@@ -276,7 +276,18 @@ def test_build_motion_convert_job_spec_passes_still_and_output_paths_as_args():
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
     args = spec.spec.template.spec.containers[0].args
-    assert args == ["/assets/stills/still_001.png", "/assets/loops/loop_dummy_001.mp4"]
+    assert args == ["/assets/stills/still_001.png", "/assets/loops/loop_dummy_001.mp4", "1920", "1080"]
+
+
+def test_build_motion_convert_job_spec_uses_vertical_dims_for_vertical_orientation():
+    spec = main.build_motion_convert_job_spec(
+        job_id="motionconvert-loop_dummy_001",
+        still_path="/assets/stills/still_001.png",
+        output_path="/assets/loops/loop_dummy_001.mp4",
+        orientation="vertical",
+    )
+    args = spec.spec.template.spec.containers[0].args
+    assert args == ["/assets/stills/still_001.png", "/assets/loops/loop_dummy_001.mp4", "1080", "1920"]
 
 
 class _FakeUrlResponse:

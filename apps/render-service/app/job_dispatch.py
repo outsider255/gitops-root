@@ -67,7 +67,7 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     track_paths = [resolve_asset_path("tracks", track_id) for track_id in job.track_ids]
     container = client.V1Container(
         name="assemble",
-        image="render-service:v17",
+        image="render-service:v18",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, job.category, job.output_path, *track_paths],
         volume_mounts=[
@@ -159,7 +159,7 @@ def build_clip_job_spec(req) -> "client.V1Job":
     job_name = k8s_job_name("clip", req.job_id)
     container = client.V1Container(
         name="clip",
-        image="render-service:v17",
+        image="render-service:v18",
         command=["python3", "/app/clip_entrypoint.py"],
         args=[
             req.main_loop_path, req.main_track_path,
@@ -213,16 +213,18 @@ async def watch_clip_job(req):
         JOBS[req.job_id]["output_path"] = req.output_path
 
 
-def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str) -> "client.V1Job":
+def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str, orientation: str = "horizontal") -> "client.V1Job":
+    output_w, output_h = (1080, 1920) if orientation == "vertical" else (1920, 1080)
     job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v17",
+        image="render-service:v18",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
-            "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2], zoom_target=1.0), check=True)"
+            "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2], zoom_target=1.0, "
+            "output_w=int(sys.argv[3]), output_h=int(sys.argv[4])), check=True)"
         )],
-        args=[still_path, output_path],
+        args=[still_path, output_path, str(output_w), str(output_h)],
         volume_mounts=[client.V1VolumeMount(name="assets", mount_path="/assets")],
     )
     pod_template = client.V1PodTemplateSpec(
@@ -242,11 +244,11 @@ def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str
     )
 
 
-async def dispatch_motion_convert_job(job_id: str, still_path: str, output_path: str) -> str:
+async def dispatch_motion_convert_job(job_id: str, still_path: str, output_path: str, orientation: str = "horizontal") -> str:
     def _sync():
         config.load_incluster_config()
         batch = client.BatchV1Api()
-        spec = build_motion_convert_job_spec(job_id, still_path, output_path)
+        spec = build_motion_convert_job_spec(job_id, still_path, output_path, orientation)
         return create_job_idempotent(batch, spec)
     return await run_in_threadpool(_sync)
 

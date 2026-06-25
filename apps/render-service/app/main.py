@@ -34,6 +34,7 @@ class MotionConvertRequest(BaseModel):
     loop_id: str
     still_path: str
     category: str
+    orientation: str = "horizontal"
 
 
 class DownloadToAssetsRequest(BaseModel):
@@ -166,7 +167,7 @@ async def process_motion_convert(req: MotionConvertRequest, background_tasks: Ba
         "output_path": None,
         "requested_output_path": output_path,
     }
-    job_name = await job_dispatch.dispatch_motion_convert_job(job_id, req.still_path, output_path)
+    job_name = await job_dispatch.dispatch_motion_convert_job(job_id, req.still_path, output_path, req.orientation)
     job_dispatch.JOBS[job_id]["job_name"] = job_name
     job_dispatch.JOBS[job_id]["status"] = "queued"
     background_tasks.add_task(job_dispatch.watch_motion_convert_job, job_id, output_path)
