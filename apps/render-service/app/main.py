@@ -45,8 +45,6 @@ class ClipRequest(BaseModel):
     job_id: str
     main_loop_path: str
     main_track_path: str
-    focal_x: float
-    focal_y: float
     audio_start_s: float = 30.0
     audio_duration_s: float = 40.0
     output_path: str

@@ -48,7 +48,7 @@ def main(loop_path: str, category: str, output_path: str, track_paths: list[str]
 
         subprocess.run(
             fa.build_loop_to_duration_cmd(effects_path, combined_audio_path, TRACK_TARGET_DURATION_S, output_path),
-            check=True, capture_output=True, timeout=120,
+            check=True, capture_output=True, timeout=900,
         )
 
     print(f"assembly complete: {output_path}")

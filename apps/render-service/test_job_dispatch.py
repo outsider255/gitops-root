@@ -85,7 +85,7 @@ def test_build_assembly_job_spec_uses_render_service_image(monkeypatch):
         category = "deep_focus"
 
     spec = main.build_assembly_job_spec(_FakeJob())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v12"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v13"
 
 
 def test_build_assembly_job_spec_mounts_outbox_and_assets(monkeypatch):
@@ -182,8 +182,6 @@ class _FakeClipRequest:
     job_id = "20260624130000"
     main_loop_path = "/assets/loops/loop_4b50874c8f.mp4"
     main_track_path = "/assets/tracks/trk_7037ede592.mp3"
-    focal_x = 0.5
-    focal_y = 0.5
     audio_start_s = 30.0
     audio_duration_s = 40.0
     output_path = "/outbox/clip-test.mp4"
@@ -191,7 +189,7 @@ class _FakeClipRequest:
 
 def test_build_clip_job_spec_uses_render_service_image():
     spec = main.build_clip_job_spec(_FakeClipRequest())
-    assert spec.spec.template.spec.containers[0].image == "render-service:v12"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v13"
 
 
 def test_build_clip_job_spec_mounts_outbox_and_assets():
@@ -206,7 +204,7 @@ def test_build_clip_job_spec_passes_args_in_order():
     assert args == [
         "/assets/loops/loop_4b50874c8f.mp4",
         "/assets/tracks/trk_7037ede592.mp3",
-        "0.5", "0.5", "30.0", "40.0",
+        "30.0", "40.0",
         "/outbox/clip-test.mp4",
     ]
 
@@ -222,7 +220,7 @@ def test_build_motion_convert_job_spec_uses_render_service_image():
         still_path="/assets/stills/still_001.png",
         output_path="/assets/loops/loop_dummy_001.mp4"
     )
-    assert spec.spec.template.spec.containers[0].image == "render-service:v12"
+    assert spec.spec.template.spec.containers[0].image == "render-service:v13"
 
 
 def test_build_motion_convert_job_spec_mounts_assets():
