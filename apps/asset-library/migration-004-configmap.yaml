@@ -5,4 +5,4 @@ metadata:
   namespace: render-service
 data:
   migrate.sql: |
-    ALTER TABLE visual_loop_library ADD COLUMN IF NOT EXISTS orientation TEXT NOT NULL DEFAULT 'horizontal';
+    ALTER TABLE visual_loop_library ADD COLUMN orientation TEXT NOT NULL DEFAULT 'horizontal';

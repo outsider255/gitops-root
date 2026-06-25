@@ -17,10 +17,14 @@ spec:
             - |
               import sqlite3
               conn = sqlite3.connect('/data/library.db')
-              conn.executescript(open('/sql/migrate.sql').read())
-              conn.commit()
+              existing = [r[1] for r in conn.execute('PRAGMA table_info(visual_loop_library)').fetchall()]
+              if 'orientation' not in existing:
+                  conn.execute("ALTER TABLE visual_loop_library ADD COLUMN orientation TEXT NOT NULL DEFAULT 'horizontal'")
+                  conn.commit()
+                  print('migration 004 applied: visual_loop_library.orientation')
+              else:
+                  print('migration 004: orientation already exists, skipped')
               conn.close()
-              print('migration 004 applied: visual_loop_library.orientation')
           volumeMounts:
             - name: data
               mountPath: /data
