@@ -67,7 +67,7 @@ def build_assembly_job_spec(job) -> "client.V1Job":
     track_paths = [resolve_asset_path("tracks", track_id) for track_id in job.track_ids]
     container = client.V1Container(
         name="assemble",
-        image="render-service:v15",
+        image="render-service:v16",
         command=["python3", "/app/assembly_entrypoint.py"],
         args=[loop_path, job.category, job.output_path, *track_paths],
         volume_mounts=[
@@ -159,7 +159,7 @@ def build_clip_job_spec(req) -> "client.V1Job":
     job_name = k8s_job_name("clip", req.job_id)
     container = client.V1Container(
         name="clip",
-        image="render-service:v15",
+        image="render-service:v16",
         command=["python3", "/app/clip_entrypoint.py"],
         args=[
             req.main_loop_path, req.main_track_path,
@@ -217,7 +217,7 @@ def build_motion_convert_job_spec(job_id: str, still_path: str, output_path: str
     job_name = k8s_job_name("job", job_id)
     container = client.V1Container(
         name="motion-convert",
-        image="render-service:v15",
+        image="render-service:v16",
         command=["python3", "-c", (
             "import ffmpeg_assembly as fa, subprocess, sys; "
             "subprocess.run(fa.build_ken_burns_cmd(sys.argv[1], sys.argv[2], zoom_target=1.0), check=True)"

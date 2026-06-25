@@ -1,6 +1,6 @@
 import os
 import urllib.request
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Header
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -113,6 +113,19 @@ async def render_clip(req: ClipRequest, background_tasks: BackgroundTasks):
     job_dispatch.JOBS[req.job_id]["status"] = "queued"
     background_tasks.add_task(job_dispatch.watch_clip_job, req)
     return {"job_id": req.job_id, "job_name": job_name}
+
+
+@app.get("/echo-bearer-token")
+def echo_bearer_token(authorization: str = Header(None)):
+    """n8n's Code node sandbox has no API to read a credential's raw
+    access token directly. Instead, an HTTP Request node configured with
+    the existing OAuth2 credential (predefinedCredentialType) calls this
+    endpoint -- n8n attaches a valid, auto-refreshed Bearer token to the
+    request, which we just hand back so it can be forwarded to the real
+    upload dispatch without n8n ever buffering the video file itself."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="missing bearer token")
+    return {"access_token": authorization[len("Bearer "):]}
 
 
 @app.post("/upload/youtube", status_code=202)
