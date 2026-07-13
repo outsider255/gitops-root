@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: aurastream
+  namespace: aurastream
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`ns3098488.ip-54-36-172.eu`)
+      kind: Rule
+      services:
+        - name: web
+          port: 80
+  tls:
+    secretName: aurastream-tls
