@@ -28,7 +28,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: web
-          image: ghcr.io/outsider255/aurastream-web:a6a370d8d448dbff6070c981557c121b134c1a7a
+          image: ghcr.io/outsider255/aurastream-web:d3f034c76b2d4fb82b87f74e3293d91918df24aa
           ports:
             - containerPort: 80
           volumeMounts:
