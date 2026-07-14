@@ -23,6 +23,10 @@ spec:
     metadata:
       labels:
         app: web
+      annotations:
+        # Bump manually whenever web-nginx-configmap.yaml changes: the conf is mounted via
+        # subPath, which never refreshes in-place, so only a pod restart picks up a new conf.
+        aurastream.io/nginx-conf-rev: "2"
     spec:
       imagePullSecrets:
         - name: ghcr-pull

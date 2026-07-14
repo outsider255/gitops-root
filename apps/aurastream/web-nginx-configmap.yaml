@@ -5,6 +5,13 @@ metadata:
   namespace: aurastream
 data:
   default.conf: |
+    # Rate limit for the anonymous Gemini batch callback: genuine traffic is a handful of
+    # webhooks per batch job, so a tight per-IP budget only throttles secret-probing. Behind
+    # Traefik $binary_remote_addr is typically the ingress pod IP (one shared bucket) — still
+    # fine for this endpoint's traffic volume. This file is included at http context, so the
+    # zone declaration is valid here.
+    limit_req_zone $binary_remote_addr zone=gemini_callback:1m rate=10r/m;
+
     server {
         listen 80;
         server_name _;
@@ -14,6 +21,32 @@ data:
 
         # kube-dns (k3s CoreDNS) — Docker's 127.0.0.11 does not exist here.
         resolver 10.43.0.10 valid=10s;
+
+        # Baseline security headers, inherited by every location below that declares no
+        # add_header of its own (nginx inheritance: any add_header in a location replaces
+        # ALL inherited ones — repeat these where a location adds its own headers).
+        # HSTS is honored only over HTTPS (TLS terminates at Traefik) and ignored on plain
+        # HTTP, so it is safe to emit unconditionally. No includeSubDomains — sibling
+        # subdomains of the host are not ours to commit.
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options SAMEORIGIN always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        # Anonymous webhook — longest-prefix match beats /api/, so only this path is
+        # rate-limited. The handler itself is secret-gated + fail-closed; the limit just
+        # blunts secret probing.
+        location /api/gemini-batch/ {
+            limit_req zone=gemini_callback burst=10 nodelay;
+            set $upstream_api http://api.aurastream.svc.cluster.local:5075;
+            proxy_pass $upstream_api$request_uri;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
 
         location /api/ {
             set $upstream_api http://api.aurastream.svc.cluster.local:5075;
@@ -41,7 +74,21 @@ data:
             alias /pubmedia/;
         }
 
+        # SPA client-side routing fallback. CSP lives ONLY here: the Hangfire dashboard
+        # (/hangfire) renders its own HTML with inline scripts and would break under it,
+        # and API JSON doesn't need one. The Supabase token sits in localStorage + a
+        # JS-set cookie, so XSS = token theft — this CSP is the main mitigation.
+        # connect-src assumes hosted Supabase (*.supabase.co); widen if the project ever
+        # moves to a self-hosted Supabase URL. style-src 'unsafe-inline' is required by
+        # React style attributes; script-src stays strict ('self' only — Vite emits no
+        # inline scripts).
         location / {
+            add_header X-Content-Type-Options nosniff always;
+            add_header X-Frame-Options SAMEORIGIN always;
+            add_header Referrer-Policy strict-origin-when-cross-origin always;
+            add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+            add_header Strict-Transport-Security "max-age=31536000" always;
+            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'" always;
             try_files $uri $uri/ /index.html;
         }
     }
