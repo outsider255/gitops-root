@@ -46,8 +46,6 @@ spec:
               value: https://ns3098488.ip-54-36-172.eu
             - name: Publish__DefaultPrivacy
               value: private
-            - name: OneDrive__TenantId
-              value: consumers
             - name: Smtp__Port
               value: "587"
             - name: Smtp__UseStartTls
