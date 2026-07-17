@@ -45,7 +45,7 @@ spec:
             - name: Publish__PublicMediaBaseUrl
               value: https://ns3098488.ip-54-36-172.eu
             - name: Publish__DefaultPrivacy
-              value: private
+              value: public
             - name: Smtp__Port
               value: "587"
             - name: Smtp__UseStartTls
