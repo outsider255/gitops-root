@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streamer
+  namespace: aurastream
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # single ffmpeg push; never two streamers at once
+  selector:
+    matchLabels:
+      app: streamer
+  template:
+    metadata:
+      labels:
+        app: streamer
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: streamer
+          image: ghcr.io/outsider255/aurastream-streamer:732ccced5b10f58916bf6c0ff219d44dbbf10ba7
+          env:
+            - name: DOTNET_ENVIRONMENT
+              value: Production
+            - name: DataProtection__KeyRingPath
+              value: /media/keyring
+          envFrom:
+            - secretRef:
+                name: aurastream-secrets    # ConnectionStrings__Default, R2__*
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: media
+              mountPath: /media
+              readOnly: true                # key ring only; RWO shared same-node on single-node k3s
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: aurastream-media
