@@ -30,7 +30,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: api
-          image: ghcr.io/outsider255/aurastream-api:5849495f1584fed40e8b274923351d08d2f4b709
+          image: ghcr.io/outsider255/aurastream-api:dc27e711641d4bdf7e1d6e4f11271fef262946af
           ports:
             - containerPort: 5075
           env:
