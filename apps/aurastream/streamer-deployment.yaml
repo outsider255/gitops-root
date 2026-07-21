@@ -19,7 +19,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: streamer
-          image: ghcr.io/outsider255/aurastream-streamer:a23d0baa71254c688ed448429fb0cca3ad57adc5
+          image: ghcr.io/outsider255/aurastream-streamer:10aa10dc09e0485f36335f1428b1b28f1522bca3
           env:
             - name: DOTNET_ENVIRONMENT
               value: Production
