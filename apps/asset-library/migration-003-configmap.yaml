@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: asset-library-migration-003
-  namespace: render-service
-data:
-  migrate.sql: |
-    ALTER TABLE visual_loop_library ADD COLUMN crop_focal_x REAL;
-    ALTER TABLE visual_loop_library ADD COLUMN crop_focal_y REAL;

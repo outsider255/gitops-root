@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: asset-library-migration-004
-  namespace: render-service
-data:
-  migrate.sql: |
-    ALTER TABLE visual_loop_library ADD COLUMN orientation TEXT NOT NULL DEFAULT 'horizontal';
