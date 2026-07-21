@@ -39,7 +39,10 @@ spec:
                       storage: 20Gi
 
         grafana:
-          adminPassword: REDACTED
+          admin:
+            existingSecret: grafana-admin
+            userKey: admin-user
+            passwordKey: admin-password
           grafana.ini:
             server:
               root_url: "https://ns3098488.ip-54-36-172.eu/grafana"
