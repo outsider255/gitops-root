@@ -40,6 +40,10 @@ spec:
 
         grafana:
           adminPassword: REDACTED
+          grafana.ini:
+            server:
+              root_url: "https://ns3098488.ip-54-36-172.eu/grafana"
+              serve_from_sub_path: true
           persistence:
             enabled: true
             storageClassName: local-path

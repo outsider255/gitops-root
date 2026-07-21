@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: grafana-tls
+  namespace: monitoring
+spec:
+  secretName: grafana-tls
+  dnsNames:
+    - ns3098488.ip-54-36-172.eu
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
