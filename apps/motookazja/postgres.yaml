@@ -1,20 +1,36 @@
+# Headless service backing the StatefulSet's stable DNS name. Required by
+# serviceName below; has no cluster IP by design.
 apiVersion: v1
 kind: Service
 metadata:
   name: postgres
   namespace: motookazja
 spec:
-  # ClusterIP only, deliberately. Postgres is one of the most heavily scanned
-  # ports on the internet, and this box has a public IP. The scraper runs on a
-  # residential machine and reaches this over an SSH tunnel instead:
-  #   ssh -N -L 5432:localhost:5432 ubuntu@ns3098488.ip-54-36-172.eu
-  # with a kubectl port-forward on the far side, or via the helper script in
-  # the MotoOkazja repo. Nothing here is published to the internet.
   clusterIP: None
   selector:
     app: postgres
   ports:
     - port: 5432
+---
+# A second, addressable service purely so the scraper on a residential machine
+# can reach the database over an SSH tunnel to the node:
+#   ssh -N -L 5432:<this service's ClusterIP>:5432 ubuntu@<node>
+# The node can route to ClusterIPs, so this needs no published port. That is
+# the point: Postgres is among the most scanned ports on the internet and this
+# box has a public IP, so nothing here is exposed. Deliberately not a NodePort
+# and not a Traefik TCP route.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-tunnel
+  namespace: motookazja
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
 ---
 apiVersion: apps/v1
 kind: StatefulSet
