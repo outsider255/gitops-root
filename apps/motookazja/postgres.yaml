@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: motookazja
+spec:
+  # ClusterIP only, deliberately. Postgres is one of the most heavily scanned
+  # ports on the internet, and this box has a public IP. The scraper runs on a
+  # residential machine and reaches this over an SSH tunnel instead:
+  #   ssh -N -L 5432:localhost:5432 ubuntu@ns3098488.ip-54-36-172.eu
+  # with a kubectl port-forward on the far side, or via the helper script in
+  # the MotoOkazja repo. Nothing here is published to the internet.
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: motookazja
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          # Pinned to 16 to match what the test suite runs against via
+          # Testcontainers. The comparables query leans on percentile_cont and
+          # jsonb; testing on a different major version than production runs
+          # would defeat the point of using real Postgres in the tests.
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_DB
+              value: motookazja
+            - name: POSTGRES_USER
+              value: motookazja
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: motookazja-secrets
+                  key: POSTGRES_PASSWORD
+            # The PVC root is not empty on first mount (lost+found), which
+            # makes initdb refuse to run. Keeping the cluster in a subdirectory
+            # is the standard workaround.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+              name: postgres
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "motookazja", "-d", "motookazja"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "motookazja", "-d", "motookazja"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 5
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 10Gi

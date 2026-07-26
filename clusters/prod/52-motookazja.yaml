@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: motookazja
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: motookazja
+  source:
+    repoURL: https://github.com/outsider255/gitops-root.git
+    targetRevision: main
+    path: apps/motookazja
+  syncPolicy:
+    automated:
+      # prune is deliberately false here, unlike the other apps. This
+      # Application owns a StatefulSet holding scraped listing history that
+      # cannot be re-fetched retroactively — price snapshots over time are the
+      # basis for the days-to-sale signal. An accidental path rename or a bad
+      # merge should not be able to delete that data.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
