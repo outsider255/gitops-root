@@ -1,0 +1,30 @@
+# Shared media volume, mounted at /media by BOTH the Api and the Streamer.
+#
+# Why the Streamer needs the same filesystem as the Api: it reads pool tracks and the active
+# stream visual BY PATH (Media__Root/{channelId:N}/pool/..., .../stream-visual/...) — it never
+# fetches them over HTTP from the Api.
+#
+# VERIFIED AGAINST THE REAL CLUSTER (2026-07-26): the only StorageClass is `local-path`
+# (rancher.io/local-path), which is ReadWriteOnce — there is no RWX-capable StorageClass here.
+# ReadWriteOnce means one *node*, not one pod — the Api and Streamer pods CAN both mount this PVC
+# because the cluster is currently SINGLE-NODE (`kraken`): RWO only refuses to be mounted by pods
+# scheduled on a second node, and there is no second node for the scheduler to place either pod on.
+#
+# WARNING: if a second node is ever added to this cluster, this stops being safe. Nothing pins
+# either Deployment to `kraken`, so the scheduler could place the Streamer pod on the new node,
+# where a ReadWriteOnce volume already attached to `kraken` cannot also attach — the Streamer pod
+# would fail to mount /media and be unable to read pool tracks or the active stream visual. Before
+# adding a second node, either (a) pin both the Api and Streamer Deployments to the same node via
+# nodeSelector/nodeAffinity, or (b) migrate to real RWX storage (NFS/CephFS/Azure Files/EFS).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aurastream2-media
+  namespace: aurastream2
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 50Gi

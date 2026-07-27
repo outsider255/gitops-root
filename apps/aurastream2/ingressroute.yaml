@@ -1,0 +1,47 @@
+# v2 shares v1's hostname and is path-split under /v2.
+#
+# WHY THIS DOES NOT DISTURB v1: Traefik ranks competing rules by priority, and when none is set
+# it derives one from the rule's length — so v2's `Host(...) && PathPrefix(/v2)` would already
+# outrank v1's bare `Host(...)` for /v2/* while leaving every other path on v1. Both priorities
+# are set EXPLICITLY below rather than relying on that derivation, because the failure mode if it
+# ever changed is v1 swallowing v2's traffic (or worse, the reverse) with no error anywhere.
+# v1's own IngressRoute (apps/aurastream/ingressroute.yaml) sets no priority and is left
+# untouched; its derived priority is far below 100.
+#
+# The StripPrefix middleware removes /v2 before the request reaches nginx, so the container sees
+# /api/..., /pub-media/..., /assets/... — the same paths it would see if it owned the host. The
+# browser still sees /v2/... because the SPA is BUILT with base=/v2/ and the router runs with
+# basename=/v2. Those two must stay in step: change one and deep links or asset URLs break.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-v2
+  namespace: aurastream2
+spec:
+  stripPrefix:
+    prefixes:
+      - /v2
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: aurastream2
+  namespace: aurastream2
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`ns3098488.ip-54-36-172.eu`) && PathPrefix(`/v2`)
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: strip-v2
+      services:
+        - name: aurastream2-web
+          port: 80
+  tls:
+    # Reuses the certificate cert-manager already issues for this host in the aurastream
+    # namespace. Kubernetes Secrets do not cross namespaces, so this references v2's own copy —
+    # see the note in clusters/prod/53-aurastream2.yaml about replicating `aurastream-tls` into
+    # this namespace (or issuing a second Certificate for the same dnsName).
+    secretName: aurastream2-tls

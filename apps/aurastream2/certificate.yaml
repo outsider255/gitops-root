@@ -1,0 +1,21 @@
+# A second certificate for the SAME hostname v1 already holds.
+#
+# This is not redundancy for its own sake: Kubernetes Secrets do not cross namespaces, so v2's
+# IngressRoute cannot reference v1's `aurastream-tls` in the `aurastream` namespace. cert-manager
+# issues an independent certificate for the same dnsName into this namespace instead.
+#
+# Let's Encrypt permits this — duplicate certificates for an identical name set are capped at 5
+# per week, and this is issued once and then renewed on cert-manager's own schedule. The HTTP-01
+# challenge is solved by the same ClusterIssuer that already works for v1 on this cluster.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: aurastream2-tls
+  namespace: aurastream2
+spec:
+  secretName: aurastream2-tls
+  dnsNames:
+    - ns3098488.ip-54-36-172.eu
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer

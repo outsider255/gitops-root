@@ -1,0 +1,20 @@
+# Headless Service backing the mssql StatefulSet (clusterIP: None gives the pod a stable DNS name).
+#
+# In-namespace address for ConnectionStrings__Db:
+#   Server=mssql.aurastream2.svc.cluster.local,1433;Database=aurastream2;...
+#
+# Both the Api and the Streamer connect here — the Streamer needs the same database to read the
+# StreamSession row (ingest URL, encrypted stream key, ReconnectRequestedAt) and the playlist.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mssql
+  namespace: aurastream2
+spec:
+  clusterIP: None
+  selector:
+    app: mssql
+  ports:
+    - port: 1433
+      targetPort: 1433
+      protocol: TCP

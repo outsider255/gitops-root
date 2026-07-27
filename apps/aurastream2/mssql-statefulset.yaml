@@ -1,0 +1,77 @@
+# v2's OWN SQL Server instance.
+#
+# Deliberately separate from v1's `mssql-0` (in the `aurastream` namespace), which stays untouched
+# and serving live production throughout the cutover. A separate instance — rather than a second
+# database on v1's — means v2's migrations, Hangfire schema, load and any crash cannot affect the
+# system we are rolling back to. That isolation is the entire premise of "rollback = keep using v1".
+#
+# This mirrors v1's proven StatefulSet (running 12+ days) rather than inventing a spec: same image,
+# same readiness probe, same retention policy, same resource shape.
+#
+# Capacity note (kraken, surveyed 2026-07-26): 8 CPU / 32 GB, ~9% memory requested before v2.
+# This adds a 2 GB request / 4 GB limit alongside v1's identical instance — comfortably within budget.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mssql
+  namespace: aurastream2
+spec:
+  replicas: 1
+  serviceName: mssql
+  selector:
+    matchLabels:
+      app: mssql
+  # Retain the PVC if the StatefulSet is ever deleted or scaled down — this volume holds the only
+  # copy of v2's database. Losing it would discard the channel, characters, templates, the music
+  # pool's PoolTrack rows and every published piece's history.
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  template:
+    metadata:
+      labels:
+        app: mssql
+    spec:
+      containers:
+        - name: mssql
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          ports:
+            - containerPort: 1433
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aurastream2-secrets
+                  key: MSSQL_SA_PASSWORD
+          # SQL Server 2022 takes ~20-30s to accept connections from cold. Without this probe the
+          # Api's Database.Migrate() (which runs before Kestrel binds) races the database and
+          # crash-loops on first deploy. Note `mssql-tools18` + `-C`: the v17 tools image is retired
+          # and v18 requires -C to trust the self-signed server certificate.
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -Q "SELECT 1"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 10
+          resources:
+            requests:
+              memory: 2Gi
+            limits:
+              memory: 4Gi
+          volumeMounts:
+            - name: mssql-data
+              mountPath: /var/opt/mssql
+  volumeClaimTemplates:
+    - metadata:
+        name: mssql-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 20Gi

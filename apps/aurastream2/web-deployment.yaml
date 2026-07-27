@@ -1,0 +1,64 @@
+# The v2 operator console (FE1–FE4): nginx serving the built SPA and proxying /api/,
+# /pub-media/ and /hangfire to the Api service in this namespace.
+#
+# Unlike v1's `web`, the nginx conf is BAKED INTO THE IMAGE (frontend/Dockerfile COPYs
+# frontend/nginx.conf) rather than mounted from a ConfigMap. That deliberately avoids v1's
+# subPath-mount gotcha, where a conf change never refreshes in place and needs a manual
+# annotation bump to force a pod restart — here a conf change is a new image tag, which rolls
+# the pod by construction.
+#
+# It also mounts no volumes at all: /pub-media is proxied to the Api (token-scoped) instead of
+# served from the media PVC, so nginx can never expose what sits beside it on that volume —
+# notably the Data Protection key ring.
+apiVersion: v1
+kind: Service
+metadata:
+  name: aurastream2-web
+  namespace: aurastream2
+spec:
+  selector:
+    app: aurastream2-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aurastream2-web
+  namespace: aurastream2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aurastream2-web
+  template:
+    metadata:
+      labels:
+        app: aurastream2-web
+    spec:
+      # Namespaced pull secret — see api-deployment.yaml.
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: web
+          # TAG IS A PLACEHOLDER until aurastream2's main is pushed and CI publishes an image.
+          # The console's API base URL and Supabase project are INLINED AT BUILD TIME by Vite,
+          # so this image is bound to the values CI passed as build args — changing them means a
+          # rebuild, not an env edit here.
+          image: ghcr.io/outsider255/aurastream2-web:REPLACE_WITH_SHA
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /index.html
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

@@ -1,0 +1,54 @@
+# AuraStream v2 — runs ALONGSIDE v1, in its own namespace, with its own database and its own
+# SQL Server. v1 (50-aurastream.yaml) is untouched and keeps publishing until it is deliberately
+# stood down at the end of docs/ops/cutover-runbook.md in the aurastream2 repo.
+#
+# ── SYNC IS DELIBERATELY MANUAL FOR THE FIRST DEPLOY ──────────────────────────────────────────
+# Every other Application here runs `automated: {prune, selfHeal}`. This one does not, yet,
+# because two things must exist in the cluster BEFORE the pods start, and neither can live in git:
+#
+#   1. Secret `aurastream2-secrets` — see deploy/secrets.example.yaml in the aurastream2 repo.
+#      The Gemini, Veo and Suno keys are resolved AT BOOT (RecipeValidator eagerly resolves every
+#      capability right after app.Build()), so an Api pod started without them CrashLoopBackOffs
+#      rather than failing later on first use. Supabase__JwtSecret is likewise boot-required: a
+#      zero-length key throws IDX10703 before app.Run().
+#   2. Secret `ghcr-pull` — GHCR packages are private by default and image pull secrets do not
+#      cross namespaces, so v1's copy in the `aurastream` namespace is not visible here.
+#
+# Also required before the first sync: the three image tags in apps/aurastream2/ are
+# REPLACE_WITH_SHA placeholders. aurastream2's main must be pushed so CI publishes
+# aurastream2-{api,streamer,web}, then the tags set to that commit's full SHA.
+#
+# Once a first sync is green, add the same syncPolicy the other apps use:
+#   syncPolicy:
+#     automated: {prune: true, selfHeal: true}
+#     syncOptions: [CreateNamespace=true]
+# Until then the namespace must be created by the manual sync (CreateNamespace=true is kept below
+# so a manual sync still creates it).
+#
+# ── WATCH ON FIRST APPLY ──────────────────────────────────────────────────────────────────────
+# apps/aurastream2/certificate.yaml requests a SECOND Let's Encrypt certificate for the hostname
+# v1 already holds (Secrets are namespaced, so v2 cannot reuse v1's). The HTTP-01 challenge is
+# served at /.well-known/acme-challenge/<token>, which does NOT start with /v2 — so it is matched
+# by v1's route, exactly as v1's own renewals already are, and cert-manager's solver Ingress
+# outranks it on path specificity. This is the one piece of the routing that is inferred from how
+# v1 behaves rather than observed for v2: confirm the certificate reaches Ready on first sync
+# before trusting HTTPS on /v2.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aurastream2
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: aurastream2
+  source:
+    repoURL: https://github.com/outsider255/gitops-root.git
+    targetRevision: main
+    path: apps/aurastream2
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true

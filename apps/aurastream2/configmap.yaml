@@ -1,0 +1,47 @@
+# Non-secret configuration shared by the Api and/or Streamer. Anything with a credential,
+# token, or connection-string password lives in secrets.example.yaml / the real Secret instead —
+# see deploy/README.md for the full inventory and the reasoning behind each split.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aurastream2-config
+  namespace: aurastream2
+data:
+  # Must NOT be "Testing" or "Smoke" — those two values switch every provider integration
+  # (Gemini, Suno, Veo, YouTube, Buffer, Telegram, R2, yt-dlp) to an in-memory fake in
+  # src/AuraStream2.Api/Program.cs. Any other value (this default, "Production") takes the
+  # real branch.
+  ASPNETCORE_ENVIRONMENT: "Production"
+
+  # Api: media root inside the container. Must match the media PVC mount path below.
+  Media__Root: "/media"
+
+  # Streamer: scratch dir for pre-encoded visuals/concat files. Must be its OWN PVC mount,
+  # never a subdirectory of /media — see media-pvc.yaml and streamer-work-pvc.yaml.
+  Streamer__WorkDir: "/streamer-work"
+
+  # Baked into both images already (Api and Streamer Dockerfiles ENV Ffmpeg__BinaryPath=ffmpeg).
+  # Repeated here only so the full runtime surface is visible in one place; safe to delete.
+  Ffmpeg__BinaryPath: "ffmpeg"
+
+  # Baked into the Api image (fonts-dejavu-core installed at this path). meme-short and teaser
+  # fail fast at assemble if this file doesn't exist in the image.
+  Ffmpeg__FontPath: "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+  # Baked into the Api image (yt-dlp binary installed here). Only the Api uses it.
+  YtDlp__BinaryPath: "/usr/local/bin/yt-dlp"
+
+  # v2 shares v1's hostname and is path-split under /v2 (see ingressroute.yaml). Buffer fetches
+  # media BY URL from this base + /pub-media/... (PublicMediaLink), so it must resolve from
+  # Buffer's servers — the /v2 prefix is part of the public URL and must not be dropped here.
+  Publish__PublicMediaBaseUrl: "https://ns3098488.ip-54-36-172.eu/v2"
+
+  # Not secret (an issuer URL, e.g. https://<project>.supabase.co/auth/v1) — the matching
+  # Supabase__JwtSecret is a real secret and lives in the Secret instead.
+  Supabase__Issuer: "REPLACE_WITH_SUPABASE_ISSUER_URL"
+
+  # Defaults already match the code's own defaults (StreamOptions.MinimumPoolTracks = 40,
+  # AnalyticsOptions.PerformanceWindowDays = 90) — set explicitly so the deployed value is
+  # visible without reading the source.
+  Stream__MinimumPoolTracks: "40"
+  Analytics__PerformanceWindowDays: "90"

@@ -1,0 +1,25 @@
+# The Streamer's scratch directory (Streamer__WorkDir=/streamer-work) — a SEPARATE PVC from the
+# media volume, deliberately.
+#
+# Why separate: the streamer's startup sweep deletes Guid-named directories it doesn't
+# recognise from its WorkDir. Pointing Streamer__WorkDir at a subdirectory of /media would put
+# that sweep in the same filesystem as the pool tracks and stream visuals the Api owns — a
+# recognised-vs-foreign Guid collision there means the sweep deletes real media. Never make this
+# a subpath of the media PVC.
+#
+# ReadWriteOnce is enough here: only the Streamer (replicas: 1, see streamer-deployment.yaml)
+# ever mounts this volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aurastream2-streamer-work
+  namespace: aurastream2
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # Verified against the real cluster (2026-07-26): the only StorageClass is `local-path`
+  # (rancher.io/local-path, ReadWriteOnce) — a correct fit here, since this volume never needed RWX.
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi

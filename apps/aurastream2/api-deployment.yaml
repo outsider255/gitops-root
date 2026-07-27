@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aurastream2-api
+  namespace: aurastream2
+spec:
+  replicas: 1
+  # Default RollingUpdate briefly runs the old and new pods together; that's fine for the api's
+  # own state but breaks the documented node-local-volume fallback for the media PVC (media-pvc.yaml)
+  # when the cluster has no RWX storage class and both pods must share one node's local volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: aurastream2-api
+  template:
+    metadata:
+      labels:
+        app: aurastream2-api
+    spec:
+      # GHCR packages are private by default; this Secret is namespaced, so aurastream2 needs its
+      # own copy — v1's lives in the `aurastream` namespace and is not visible here.
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: api
+          # TAG IS A PLACEHOLDER until aurastream2's main is pushed and CI publishes an image.
+          # CI tags with the FULL commit SHA, which is also what GET /api/health returns as
+          # `version` — so the running build is verifiable against this line.
+          image: ghcr.io/outsider255/aurastream2-api:REPLACE_WITH_SHA
+          ports:
+            - containerPort: 5075
+          envFrom:
+            - configMapRef:
+                name: aurastream2-config
+            - secretRef:
+                name: aurastream2-secrets
+          volumeMounts:
+            - name: media
+              mountPath: /media
+          # v1's api OOMKilled at 2Gi during ffmpeg assemble work and was raised to 4Gi in prod
+          # (see AuraStream/.claude/rules/ops.md). Do not set this lower without a stated reason
+          # — the same ffmpeg assemble path exists in v2 (FfmpegAssembler).
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          # Database.Migrate() runs in Program.cs before Kestrel binds. The first deploy applies
+          # the entire schema baseline against a cold SQL Server, which can take longer than the
+          # liveness window below — without this, liveness kills the pod mid-migration and it
+          # looks like a broken image. Liveness/readiness only start counting after this passes.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 5075
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 5075
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 5075
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: aurastream2-media

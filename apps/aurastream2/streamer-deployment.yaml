@@ -1,0 +1,88 @@
+# HARD REQUIREMENT — replicas: 1 + strategy.type: Recreate. Do not change either without
+# re-reading this comment:
+#
+# Nothing in the Streamer's code defends against a second instance running concurrently. Two
+# StreamSupervisor instances would:
+#   1. push encoded video to the SAME RTMP ingest URL/stream key at once (YouTube sees two
+#      colliding streams on one key);
+#   2. both pre-encode the same session's visual to the same path with ffmpeg's `-y` overwrite,
+#      truncating/corrupting whichever one the other is mid-write on;
+#   3. both advance the same session's playlist position in the DB, racing each other and
+#      skipping/repeating tracks.
+# `strategy: Recreate` (instead of the Deployment default RollingUpdate) guarantees the old pod
+# is fully terminated before the new one starts on every rollout, so there is never a moment
+# with two live instances during a deploy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aurastream2-streamer
+  namespace: aurastream2
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: aurastream2-streamer
+  template:
+    metadata:
+      labels:
+        app: aurastream2-streamer
+    spec:
+      # ENFORCED CO-LOCATION — this is not an optimisation, it is what makes the shared media
+      # volume work at all. `local-path` is ReadWriteOnce, which means one *node* (not one pod):
+      # the Api and this Streamer can share it only while both are scheduled onto the same node.
+      # Today that is trivially true (the cluster is single-node), so a comment alone would seem
+      # sufficient — but if a second node is ever added, the scheduler could place the Streamer
+      # away from the Api and it would fail to read the pool tracks and the active stream visual,
+      # which it accesses BY PATH. This affinity makes that impossible: the Streamer is only
+      # schedulable onto a node already running the Api. It fails loudly (Pending) instead of
+      # silently breaking the 24/7 stream.
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: aurastream2-api
+              topologyKey: kubernetes.io/hostname
+      # Namespaced pull secret — see api-deployment.yaml.
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: streamer
+          # CLUSTER-SPECIFIC PLACEHOLDER — see api-deployment.yaml's image comment; built as
+          # ghcr.io/outsider255/aurastream2-streamer:<sha> by CI (only when
+          # src/AuraStream2.Streamer|Domain|Infrastructure changed — see ci.yml's paths-filter).
+          # PIN THE FULL COMMIT SHA of the last build-streamer run (find it in the GHCR package
+          # versions), not :latest — the Streamer exposes no health endpoint, so nothing reveals
+          # which build is live, and a pod restart under :latest silently rolls it forward with no
+          # way to tell what changed. Use :latest only as an emergency fallback.
+          image: ghcr.io/outsider255/aurastream2-streamer:REPLACE_WITH_SHA
+          envFrom:
+            - configMapRef:
+                name: aurastream2-config
+            - secretRef:
+                name: aurastream2-secrets
+          volumeMounts:
+            - name: media
+              mountPath: /media
+            # Streamer__WorkDir points here — a DEDICATED PVC, never a subdirectory of /media.
+            # See streamer-work-pvc.yaml for why.
+            - name: streamer-work
+              mountPath: /streamer-work
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          # No liveness/readiness probes: this is a worker (Host.CreateApplicationBuilder), not
+          # a web host — it exposes no HTTP endpoint to probe.
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: aurastream2-media
+        - name: streamer-work
+          persistentVolumeClaim:
+            claimName: aurastream2-streamer-work
