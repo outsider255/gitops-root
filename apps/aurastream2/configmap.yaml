@@ -39,7 +39,7 @@ data:
 
   # Not secret (an issuer URL, e.g. https://<project>.supabase.co/auth/v1) — the matching
   # Supabase__JwtSecret is a real secret and lives in the Secret instead.
-  Supabase__Issuer: "REPLACE_WITH_SUPABASE_ISSUER_URL"
+  Supabase__Issuer: "https://jsjgoxymjrcsagsvvrdy.supabase.co/auth/v1"
 
   # Defaults already match the code's own defaults (StreamOptions.MinimumPoolTracks = 40,
   # AnalyticsOptions.PerformanceWindowDays = 90) — set explicitly so the deployed value is
