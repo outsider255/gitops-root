@@ -9,8 +9,8 @@
 #   1. Secret `aurastream2-secrets` — see deploy/secrets.example.yaml in the aurastream2 repo.
 #      The Gemini, Veo and Suno keys are resolved AT BOOT (RecipeValidator eagerly resolves every
 #      capability right after app.Build()), so an Api pod started without them CrashLoopBackOffs
-#      rather than failing later on first use. Supabase__JwtSecret is likewise boot-required: a
-#      zero-length key throws IDX10703 before app.Run().
+#      rather than failing later on first use. (Supabase__JwtSecret is NOT boot-required: prod
+#      JWT validation pulls signing keys from Supabase's OIDC JWKS via Supabase__Issuer.)
 #   2. Secret `ghcr-pull` — GHCR packages are private by default and image pull secrets do not
 #      cross namespaces, so v1's copy in the `aurastream` namespace is not visible here.
 #
