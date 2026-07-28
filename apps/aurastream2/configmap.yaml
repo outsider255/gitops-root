@@ -31,10 +31,11 @@ data:
   # Baked into the Api image (yt-dlp binary installed here). Only the Api uses it.
   YtDlp__BinaryPath: "/usr/local/bin/yt-dlp"
 
-  # v2 shares v1's hostname and is path-split under /v2 (see ingressroute.yaml). Buffer fetches
-  # media BY URL from this base + /pub-media/... (PublicMediaLink), so it must resolve from
-  # Buffer's servers — the /v2 prefix is part of the public URL and must not be dropped here.
-  Publish__PublicMediaBaseUrl: "https://ns3098488.ip-54-36-172.eu/v2"
+  # v2 shares v1's hostname and is path-split under /aurastream2 (see ingressroute.yaml). Buffer
+  # fetches media BY URL from this base + /pub-media/... (PublicMediaLink), so it must resolve
+  # from Buffer's servers — the /aurastream2 prefix is part of the public URL and must not be
+  # dropped here.
+  Publish__PublicMediaBaseUrl: "https://ns3098488.ip-54-36-172.eu/aurastream2"
 
   # Not secret (an issuer URL, e.g. https://<project>.supabase.co/auth/v1) — the matching
   # Supabase__JwtSecret is a real secret and lives in the Secret instead.

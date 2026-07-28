@@ -1,26 +1,31 @@
-# v2 shares v1's hostname and is path-split under /v2.
+# v2 shares v1's hostname and is path-split under /aurastream2 — the prefix the web image is
+# actually built with (CI repo var VITE_BASE_PATH=/aurastream2/) and the one registered as the
+# Google OAuth redirect URI. Routing MUST match that build: when this briefly said /v2, the SPA
+# shell loaded but its /aurastream2/assets/* requests fell through to v1's route and came back as
+# v1's index.html — a blank page with no error anywhere but the browser console.
 #
 # WHY THIS DOES NOT DISTURB v1: Traefik ranks competing rules by priority, and when none is set
-# it derives one from the rule's length — so v2's `Host(...) && PathPrefix(/v2)` would already
-# outrank v1's bare `Host(...)` for /v2/* while leaving every other path on v1. Both priorities
-# are set EXPLICITLY below rather than relying on that derivation, because the failure mode if it
-# ever changed is v1 swallowing v2's traffic (or worse, the reverse) with no error anywhere.
-# v1's own IngressRoute (apps/aurastream/ingressroute.yaml) sets no priority and is left
-# untouched; its derived priority is far below 100.
+# it derives one from the rule's length — so v2's `Host(...) && PathPrefix(/aurastream2)` would
+# already outrank v1's bare `Host(...)` for /aurastream2/* while leaving every other path on v1.
+# Both priorities are set EXPLICITLY below rather than relying on that derivation, because the
+# failure mode if it ever changed is v1 swallowing v2's traffic (or worse, the reverse) with no
+# error anywhere. v1's own IngressRoute (apps/aurastream/ingressroute.yaml) sets no priority and
+# is left untouched; its derived priority is far below 100.
 #
-# The StripPrefix middleware removes /v2 before the request reaches nginx, so the container sees
-# /api/..., /pub-media/..., /assets/... — the same paths it would see if it owned the host. The
-# browser still sees /v2/... because the SPA is BUILT with base=/v2/ and the router runs with
-# basename=/v2. Those two must stay in step: change one and deep links or asset URLs break.
+# The StripPrefix middleware removes /aurastream2 before the request reaches nginx, so the
+# container sees /api/..., /pub-media/..., /assets/... — the same paths it would see if it owned
+# the host. The browser still sees /aurastream2/... because the SPA is BUILT with
+# base=/aurastream2/ and the router runs with basename=/aurastream2. Those two must stay in step
+# with the prefix here: change one and deep links or asset URLs break.
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
-  name: strip-v2
+  name: strip-aurastream2
   namespace: aurastream2
 spec:
   stripPrefix:
     prefixes:
-      - /v2
+      - /aurastream2
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
@@ -31,11 +36,11 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`ns3098488.ip-54-36-172.eu`) && PathPrefix(`/v2`)
+    - match: Host(`ns3098488.ip-54-36-172.eu`) && PathPrefix(`/aurastream2`)
       kind: Rule
       priority: 100
       middlewares:
-        - name: strip-v2
+        - name: strip-aurastream2
       services:
         - name: aurastream2-web
           port: 80
