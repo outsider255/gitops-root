@@ -2,28 +2,19 @@
 # SQL Server. v1 (50-aurastream.yaml) is untouched and keeps publishing until it is deliberately
 # stood down at the end of docs/ops/cutover-runbook.md in the aurastream2 repo.
 #
-# ── SYNC IS DELIBERATELY MANUAL FOR THE FIRST DEPLOY ──────────────────────────────────────────
-# Every other Application here runs `automated: {prune, selfHeal}`. This one does not, yet,
-# because two things must exist in the cluster BEFORE the pods start, and neither can live in git:
+# ── CLUSTER-SIDE PREREQUISITES (cannot live in git) ───────────────────────────────────────────
+# Two Secrets must exist in the `aurastream2` namespace BEFORE the pods start:
 #
-#   1. Secret `aurastream2-secrets` — see deploy/secrets.example.yaml in the aurastream2 repo.
+#   1. `aurastream2-secrets` — see deploy/secrets.example.yaml in the aurastream2 repo.
 #      The Gemini, Veo and Suno keys are resolved AT BOOT (RecipeValidator eagerly resolves every
 #      capability right after app.Build()), so an Api pod started without them CrashLoopBackOffs
 #      rather than failing later on first use. (Supabase__JwtSecret is NOT boot-required: prod
 #      JWT validation pulls signing keys from Supabase's OIDC JWKS via Supabase__Issuer.)
-#   2. Secret `ghcr-pull` — GHCR packages are private by default and image pull secrets do not
+#   2. `ghcr-pull` — GHCR packages are private by default and image pull secrets do not
 #      cross namespaces, so v1's copy in the `aurastream` namespace is not visible here.
 #
-# Also required before the first sync: the three image tags in apps/aurastream2/ are
-# REPLACE_WITH_SHA placeholders. aurastream2's main must be pushed so CI publishes
-# aurastream2-{api,streamer,web}, then the tags set to that commit's full SHA.
-#
-# Once a first sync is green, add the same syncPolicy the other apps use:
-#   syncPolicy:
-#     automated: {prune: true, selfHeal: true}
-#     syncOptions: [CreateNamespace=true]
-# Until then the namespace must be created by the manual sync (CreateNamespace=true is kept below
-# so a manual sync still creates it).
+# Image tags in apps/aurastream2/ are CI-managed: aurastream2's bump-gitops job pins all three
+# to the built commit's SHA on every push to its main.
 #
 # ── WATCH ON FIRST APPLY ──────────────────────────────────────────────────────────────────────
 # apps/aurastream2/certificate.yaml requests a SECOND Let's Encrypt certificate for the hostname
@@ -50,5 +41,8 @@ spec:
     targetRevision: main
     path: apps/aurastream2
   syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
