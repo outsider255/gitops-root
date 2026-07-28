@@ -15,6 +15,13 @@ kind: StatefulSet
 metadata:
   name: mssql
   namespace: aurastream2
+  annotations:
+    # persistentVolumeClaimRetentionPolicy below keeps mssql-data-mssql-0 when THIS StatefulSet is
+    # deleted or scaled. It does not stop Argo deleting the StatefulSet in the first place, and it
+    # does not survive the Application being pruned out of clusters/prod/ — the resources-finalizer
+    # in 53-aurastream2.yaml cascade-deletes owned resources there. Both prune paths are closed
+    # here. Required before syncPolicy.automated.prune goes true.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   replicas: 1
   serviceName: mssql

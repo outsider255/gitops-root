@@ -21,6 +21,13 @@ kind: PersistentVolumeClaim
 metadata:
   name: aurastream2-media
   namespace: aurastream2
+  annotations:
+    # local-path reclaims a deleted PVC by DESTROYING the data, so neither prune path may reach
+    # this volume. Prune=false covers the resource disappearing from apps/aurastream2/ (a path
+    # rename, a bad merge); Delete=false covers the Application itself being pruned out of
+    # clusters/prod/, where the resources-finalizer in 53-aurastream2.yaml would otherwise
+    # cascade-delete everything it owns. Required before syncPolicy.automated.prune goes true.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes:
     - ReadWriteOnce

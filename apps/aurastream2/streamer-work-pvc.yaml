@@ -14,6 +14,11 @@ kind: PersistentVolumeClaim
 metadata:
   name: aurastream2-streamer-work
   namespace: aurastream2
+  annotations:
+    # Same reasoning as media-pvc.yaml: local-path destroys the data of a reclaimed PVC. Scratch
+    # contents are rebuildable, but a prune here deletes the volume out from under a running
+    # Streamer mid-stream, which is an outage rather than a clean restart.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes:
     - ReadWriteOnce
