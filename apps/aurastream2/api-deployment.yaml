@@ -27,7 +27,7 @@ spec:
           # TAG IS A PLACEHOLDER until aurastream2's main is pushed and CI publishes an image.
           # CI tags with the FULL commit SHA, which is also what GET /api/health returns as
           # `version` — so the running build is verifiable against this line.
-          image: ghcr.io/outsider255/aurastream2-api:f1408310698355c1bb69a1a1bea3ef04fbf4b851
+          image: ghcr.io/outsider255/aurastream2-api:803423f6fb0a07f8370b7243c4e850c5fb5d348f
           ports:
             - containerPort: 5075
           envFrom:
