@@ -47,7 +47,7 @@ spec:
           # The console's API base URL and Supabase project are INLINED AT BUILD TIME by Vite,
           # so this image is bound to the values CI passed as build args — changing them means a
           # rebuild, not an env edit here.
-          image: ghcr.io/outsider255/aurastream2-web:0cf1549e8896155d18cbab8c480d66c6ba5a485e
+          image: ghcr.io/outsider255/aurastream2-web:178208d6ec2266830827d7d56d60116c75fb0e41
           ports:
             - containerPort: 80
           readinessProbe:
