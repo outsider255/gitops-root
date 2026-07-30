@@ -57,7 +57,7 @@ spec:
           # versions), not :latest — the Streamer exposes no health endpoint, so nothing reveals
           # which build is live, and a pod restart under :latest silently rolls it forward with no
           # way to tell what changed. Use :latest only as an emergency fallback.
-          image: ghcr.io/outsider255/aurastream2-streamer:d3625f2950369d4159a3b274e29496d7757b8d0b
+          image: ghcr.io/outsider255/aurastream2-streamer:0cf1549e8896155d18cbab8c480d66c6ba5a485e
           envFrom:
             - configMapRef:
                 name: aurastream2-config
