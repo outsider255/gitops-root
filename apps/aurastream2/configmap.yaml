@@ -46,3 +46,17 @@ data:
   # visible without reading the source.
   Stream__MinimumPoolTracks: "40"
   Analytics__PerformanceWindowDays: "90"
+
+  # The machine pool VideoWorkerSwitch rents from when it RECREATES the vast workergroup after a
+  # stop. This is configuration rather than something the switch captures and replays: vast's read
+  # returns search_query as an object while create takes search_params as a string, with no
+  # documented conversion between the two.
+  #
+  # Leaving this unset is not neutral — the coded default is vast's own permissive
+  # "verified=true rentable=true rented=false", which constrains nothing but availability, so a
+  # recreated group could rent a machine outside every constraint below.
+  #
+  # dph caps RENTAL only: storage and bandwidth are separate line items, so real spend exceeds it.
+  # inet_down/inet_up are Mb/s and matter because the first request on a fresh worker downloads
+  # multi-gigabyte weights.
+  Video__Workergroup__SearchParams: "gpu_ram>31 dph<1.0 inet_down>1000 inet_up>1000 verified=true rentable=true rented=false"
