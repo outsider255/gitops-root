@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: granko-api
+  namespace: granko
+spec:
+  # replicas: 1 IS A HARD CONSTRAINT, not a default. SignalR runs with no backplane here, so a
+  # second replica splits the hub groups: clients connected to pod A never receive events published
+  # on pod B, and the failure is silent — the page simply stops updating for half the users.
+  replicas: 1
+  # Recreate, not the default RollingUpdate. Rolling briefly runs the old and new pods together,
+  # which would let two processes run Database.Migrate() concurrently AND split the hub groups on
+  # every deploy. A few seconds of downtime is the right trade for a beta.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: granko-api
+  template:
+    metadata:
+      labels:
+        app: granko-api
+    spec:
+      # GHCR packages are private by default, and pull secrets do not cross namespaces, so this
+      # namespace needs its own copy. Created out of band — see the H3c runbook.
+      imagePullSecrets:
+        - name: ghcr-pull
+      # The pod starts before Postgres accepts connections on a cold cluster. The obvious fix —
+      # Npgsql's EnableRetryOnFailure — WOULD BREAK THE APP: EF forbids user-initiated transactions
+      # under a retrying execution strategy, and ParticipantsApi opens one in both the join and
+      # self-PATCH handlers. Those are the transactions carrying the SELECT ... FOR UPDATE seat lock
+      # that stops concurrent joins overselling an event. Waiting here costs nothing and fails
+      # visibly instead of subtly.
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - until pg_isready -h postgres -U granko -d granko; do echo "waiting for postgres"; sleep 2; done
+      containers:
+        - name: api
+          # Tag is the full squadlink commit SHA, which is also what GET /health returns as
+          # `version` — so the running build is verifiable against this line without shelling into
+          # the pod. squadlink's CI rewrites this line on every push to master.
+          image: ghcr.io/outsider255/granko-api:8d3c7ae4f758eb5e2208283e32b6e27dc90b8338
+          ports:
+            - containerPort: 8080
+          env:
+            # PGPASSWORD must be declared BEFORE the connection string: Kubernetes expands $(VAR)
+            # only against env vars defined earlier in this same list. Composing the string here
+            # keeps the password in exactly one secret key, shared with the Postgres StatefulSet.
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: granko-db
+                  key: POSTGRES_PASSWORD
+            - name: ConnectionStrings__Db
+              value: "Host=postgres;Database=granko;Username=granko;Password=$(PGPASSWORD)"
+            # Comma-separated. WithOrigins compares ORDINAL, so a trailing slash here matches no
+            # browser Origin header at all and rejects every request from the real SPA — from one
+            # hand-typed character, with no error until a browser tries it. The pages.dev alias is
+            # listed deliberately so the stack is testable end to end before the custom domain
+            # resolves. Per-deploy preview origins are not listed: WithOrigins has no wildcards.
+            - name: Cors__Origins
+              value: "https://granko.party,https://granko.pages.dev"
+          # Liveness on /health: cheap, no I/O, reports the build. A pod answering it is alive.
+          # Readiness on /health/ready: actually opens a database connection, so during an outage
+          # the pod leaves rotation instead of serving 500s. One endpoint cannot do both jobs.
+          #
+          # startupProbe gates the other two: the first deploy applies the whole schema baseline
+          # against a cold Postgres, and Database.Migrate() runs before Kestrel binds. Without this,
+          # liveness kills the pod mid-migration and it looks like a broken image.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 15
+          # failureThreshold is deliberately tolerant. CanConnectAsync returns false on ANY failure
+          # to open a connection, including a pool or connect timeout under load — not only a real
+          # outage. With replicas: 1 a twitchy probe removes the only pod from the Service and turns
+          # a slow moment into an outage. Liveness is safe either way, since /health does no I/O and
+          # so a database outage can never trigger a restart loop.
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
