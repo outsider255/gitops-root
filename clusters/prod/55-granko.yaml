@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: granko
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: granko
+  source:
+    repoURL: https://github.com/outsider255/gitops-root.git
+    targetRevision: main
+    path: apps/granko
+  syncPolicy:
+    automated:
+      # prune is false for the same reason it is false for planszomat and motookazja: this
+      # Application owns a StatefulSet holding the only copy of live event data, on node-local
+      # storage with no backups. This only stops a manifest removed from apps/granko/ being deleted
+      # from the cluster — deleting THIS file still deletes the Application (clusters/prod is
+      # applied with prune: true by _bootstrap.yaml), and its
+      # resources-finalizer.argocd.argoproj.io then cascade-deletes the StatefulSet regardless.
+      # What actually protects the data is the persistentVolumeClaimRetentionPolicy in
+      # apps/granko/postgres.yaml.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
