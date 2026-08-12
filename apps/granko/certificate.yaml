@@ -2,13 +2,14 @@
 # reverse-DNS hostname (ns3098488.ip-54-36-172.eu), so the HTTP-01 challenge path is proven only for
 # that name. Same ClusterIssuer and same Traefik should make a customer domain work identically.
 #
-# Two ways this fails SILENTLY, both verified in H3c rather than here:
-#   - The A record must be DNS-only (grey cloud). An orange-cloud record proxies port 80 and the
-#     HTTP-01 challenge never reaches Traefik.
-#   - The issuer must actually be named letsencrypt-prod. Every app in this repo references that
-#     name, but fleet-infra defines one called letsencrypt-production. A Certificate naming an
-#     issuer that does not exist stays Pending forever and Traefik serves its self-signed default:
-#     no manifest error, no Argo error, just a browser warning.
+# The issuerRef below is confirmed against the live cluster: ClusterIssuer letsencrypt-prod exists
+# and is Ready. fleet-infra also defines one called letsencrypt-production, which is NOT what runs
+# here — naming that one instead leaves the Certificate Pending forever while Traefik serves its
+# self-signed default: no manifest error, no Argo error, just a browser warning.
+#
+# What is still unverified is DNS. api.granko.party does not resolve at all yet; it needs an A
+# record to 54.36.172.108, and that record must be DNS-only (grey cloud). An orange-cloud record
+# proxies port 80 and the HTTP-01 challenge never reaches Traefik. That is an H3c step.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
