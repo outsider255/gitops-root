@@ -1,0 +1,125 @@
+# Postgres for Granko. Nothing here is reachable from outside the cluster — the node has a public
+# IP and Postgres is among the most scanned ports on the internet. Reach it through an SSH tunnel
+# forwarded to the postgres-tunnel Service's ClusterIP.
+
+# Headless: governs the StatefulSet and provides per-pod DNS. No ClusterIP by design.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: granko
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# An ordinary ClusterIP so an SSH tunnel has a stable address to forward to; a headless Service has
+# none. This slice accepts having NO BACKUPS on node-local storage, which makes this the only way to
+# pg_dump before a node fails, or to inspect live data during the beta.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-tunnel
+  namespace: granko
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: granko
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  # Retain is already the default, but a default nobody has written down is not a safeguard. With
+  # no backups, this is the only thing standing between a deleted StatefulSet and the permanent
+  # loss of every live event.
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: granko
+            - name: POSTGRES_USER
+              value: granko
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: granko-db
+                  key: POSTGRES_PASSWORD
+            # The PVC root is not empty on first mount (lost+found), which makes initdb refuse to
+            # run. Keeping the cluster in a subdirectory is the standard workaround.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          # Without a startupProbe, liveness starts counting immediately and allows about three
+          # minutes before killing the pod — enough for a normal start, not enough for WAL replay
+          # after an unclean shutdown. A database killed mid-recovery crash-loops, and this volume
+          # is the only copy of live event data that exists.
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "granko", "-d", "granko"]
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "granko", "-d", "granko"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "granko", "-d", "granko"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        # local-path is node-local storage, the same as every other app on this cluster. There is no
+        # redundancy underneath it: if the node is replaced or its disk fails, every live event is
+        # gone. Accepted for a beta with no accounts, and recorded here so it stays a decision
+        # rather than a discovery.
+        #
+        # local-path also does not ENFORCE the request below — it is a bind mount onto the node's
+        # own disk, so the volume grows until the node's disk fills, taking down every other
+        # application on the cluster, not just this one.
+        storageClassName: local-path
+        resources:
+          requests:
+            # Events, participants, proposals and chat are small text rows with no media and no
+            # history table. Nothing here resembles planszomat's 20Gi of price snapshots.
+            storage: 5Gi

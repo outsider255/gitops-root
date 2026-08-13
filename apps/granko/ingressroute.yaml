@@ -1,0 +1,23 @@
+# granko owns this whole hostname, so there is no PathPrefix and no StripPrefix middleware —
+# unlike aurastream2, which is path-split under a shared host. No priority is set either: nothing
+# else on this cluster claims api.granko.party, so there is no competing rule to outrank.
+#
+# WebSockets need no configuration here. Traefik proxies the upgrade natively, and the DNS record
+# is DNS-only (grey cloud, see the H3c runbook), so no intermediary sits in front of the SignalR
+# hub connection.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: granko
+  namespace: granko
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`api.granko.party`)
+      kind: Rule
+      services:
+        - name: granko-api
+          port: 80
+  tls:
+    secretName: granko-tls
