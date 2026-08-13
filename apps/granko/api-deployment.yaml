@@ -43,7 +43,7 @@ spec:
           # Tag is the full squadlink commit SHA, which is also what GET /health returns as
           # `version` — so the running build is verifiable against this line without shelling into
           # the pod. squadlink's CI rewrites this line on every push to master.
-          image: ghcr.io/outsider255/granko-api:2a4bff4482862195d6ea068913833c21db03063c
+          image: ghcr.io/outsider255/granko-api:faca92be61acf86f1b8d633920760eae8e8f4d82
           ports:
             - containerPort: 8080
           env:
