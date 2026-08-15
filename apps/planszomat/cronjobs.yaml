@@ -6,8 +6,8 @@
 # for that UTC date — an overrunning crawl yields no issue rather than a wrong one.
 #
 # Image is pinned to a git SHA, not :latest: a change in behaviour for a job nobody watches
-# at 01:00 should always have a commit behind it and be revertible. 423ccef1c9096c18a0c378a8ac6bffbb0e32cd13 must be
-# replaced with the SHA the first CI run produces — the image does not exist yet.
+# at 01:00 should always have a commit behind it and be revertible. Bump the SHA only to
+# one a green CI run on master has actually pushed.
 #
 # All five image lines below must move together — an operator who updates four and misses
 # the fifth gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
