@@ -1,0 +1,34 @@
+# api.najtanszaplansza.pl through the cluster's existing Traefik + cert-manager
+# (ClusterIssuer letsencrypt-prod, same as ArgoCD's ingress). Chosen over a Cloudflare
+# Tunnel deliberately: the tunnel required activating Zero Trust with a standing card
+# authorization, and this box's IP is already public via its other ingresses — there was
+# nothing left for the tunnel to hide. The DNS record is a plain (unproxied) A record to
+# the node; TLS is Let's Encrypt end-to-end, renewed by cert-manager.
+#
+# The certificate cannot issue until najtanszaplansza.pl's nameserver switch to
+# Cloudflare completes and the A record resolves — cert-manager retries on its own, so
+# a NotReady certificate right after bring-up is normal, not broken.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: planszomat-api
+  namespace: planszomat
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: api.najtanszaplansza.pl
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: planszomat-api
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - api.najtanszaplansza.pl
+      secretName: planszomat-api-tls

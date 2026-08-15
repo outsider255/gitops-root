@@ -1,7 +1,7 @@
 # The read API. Strictly read-only — every route maps to a Core handler and nothing
 # writes; it never runs migrations (the CLI does, and the runbook migrates by hand
-# first). Reached only from inside the cluster: cloudflared (cloudflared.yaml) is what
-# exposes it as api.najtanszaplansza.pl, so there is no Ingress and no open port.
+# first). Exposed as api.najtanszaplansza.pl by ingress.yaml through the cluster's
+# Traefik, with a Let's Encrypt certificate from cert-manager.
 #
 # Same pinning discipline as cronjobs.yaml: bump the image only to a SHA a green CI
 # run on master has pushed. The API image is ghcr.io/outsider255/planszomat-api —
