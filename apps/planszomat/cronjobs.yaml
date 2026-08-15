@@ -1,0 +1,273 @@
+# Nightly pipeline: three crawls, then match, then publish-issue. The gaps between
+# schedules are deliberately generous — see CLAUDE.md and docs/known-issues.md. Order is
+# load-bearing: publish-issue's `fresh` section only counts a game as new if it was both
+# crawled in the window AND already match_status = matched, so match must finish first.
+# publish-issue also refuses outright unless every enabled shop has a finished crawl_run
+# for that UTC date — an overrunning crawl yields no issue rather than a wrong one.
+#
+# Image is pinned to a git SHA, not :latest: a change in behaviour for a job nobody watches
+# at 01:00 should always have a commit behind it and be revertible. 05872cd2c7da2b0b84c12892ab49023006584bd6 must be
+# replaced with the SHA the first CI run produces — the image does not exist yet.
+#
+# All five image lines below must move together — an operator who updates four and misses
+# the fifth gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
+# surface it. Verify after any bump:
+#   grep -o '^ *image: ghcr.io/outsider255/planszomat-cli:[^ ]*' cronjobs.yaml | sort -u
+# must print exactly one line.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crawl-rebel
+  namespace: planszomat
+spec:
+  schedule: "0 1 * * *"
+  # A node/controller outage over 01:00 should skip a badly-missed slot rather than
+  # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
+  # a delayed crawl landing on top of match or publish-issue would scramble the night.
+  startingDeadlineSeconds: 900
+  # A crawl that overruns into the next night must not have a second copy
+  # started on top of it.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
+      # everywhere else; six unattended retries against a shop that may already be
+      # rate-limiting or rejecting us would undo that.
+      backoffLimit: 1
+      # A full rebel crawl is about six hours today; seven bounds a genuinely wedged
+      # crawl (stuck pod, unresponsive shop) without killing a slow-but-working one.
+      activeDeadlineSeconds: 25200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:05872cd2c7da2b0b84c12892ab49023006584bd6
+              args: ["crawl", "rebel"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              # Starting point, not measured: a crawl holds shop pages in memory while
+              # parsing HTML. If 1Gi is tight it gets OOMKilled, feeding a failure that
+              # retrying cannot resolve. Check actual usage after the first night and
+              # adjust.
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crawl-planszostrefa
+  namespace: planszomat
+spec:
+  schedule: "30 1 * * *"
+  # A node/controller outage over 01:00 should skip a badly-missed slot rather than
+  # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
+  # a delayed crawl landing on top of match or publish-issue would scramble the night.
+  startingDeadlineSeconds: 900
+  # A crawl that overruns into the next night must not have a second copy
+  # started on top of it.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
+      # everywhere else; six unattended retries against a shop that may already be
+      # rate-limiting or rejecting us would undo that.
+      backoffLimit: 1
+      # A full rebel crawl is about six hours today; seven bounds a genuinely wedged
+      # crawl (stuck pod, unresponsive shop) without killing a slow-but-working one.
+      activeDeadlineSeconds: 25200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:05872cd2c7da2b0b84c12892ab49023006584bd6
+              args: ["crawl", "planszostrefa"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              # Starting point, not measured: a crawl holds shop pages in memory while
+              # parsing HTML. If 1Gi is tight it gets OOMKilled, feeding a failure that
+              # retrying cannot resolve. Check actual usage after the first night and
+              # adjust.
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crawl-aleplanszowki
+  namespace: planszomat
+spec:
+  schedule: "0 2 * * *"
+  # A node/controller outage over 01:00 should skip a badly-missed slot rather than
+  # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
+  # a delayed crawl landing on top of match or publish-issue would scramble the night.
+  startingDeadlineSeconds: 900
+  # A crawl that overruns into the next night must not have a second copy
+  # started on top of it.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
+      # everywhere else; six unattended retries against a shop that may already be
+      # rate-limiting or rejecting us would undo that.
+      backoffLimit: 1
+      # A full rebel crawl is about six hours today; seven bounds a genuinely wedged
+      # crawl (stuck pod, unresponsive shop) without killing a slow-but-working one.
+      activeDeadlineSeconds: 25200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:05872cd2c7da2b0b84c12892ab49023006584bd6
+              args: ["crawl", "aleplanszowki"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              # Starting point, not measured: a crawl holds shop pages in memory while
+              # parsing HTML. If 1Gi is tight it gets OOMKilled, feeding a failure that
+              # retrying cannot resolve. Check actual usage after the first night and
+              # adjust.
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: match
+  namespace: planszomat
+spec:
+  schedule: "30 3 * * *"
+  # A node/controller outage over 01:00-03:30 should skip a badly-missed slot rather
+  # than fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself,
+  # and a delayed match landing on top of publish-issue would scramble the night.
+  startingDeadlineSeconds: 900
+  # match must not overlap itself; the crawls it depends on are scheduled to have
+  # finished well before this starts. Left on the default backoffLimit (6): a match
+  # failure is usually a transient database problem, where retrying is the right
+  # answer, and there is no third party here to annoy the way a retried crawl would.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 7200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:05872cd2c7da2b0b84c12892ab49023006584bd6
+              # Known gap, accepted for now: publish-issue's guard only checks that every
+              # enabled shop has a finished crawl_run for the date — it does not check that
+              # match has finished processing that crawl's offers. rebel currently takes
+              # about six hours and overruns 03:30 every night, so match runs against a
+              # partial set; those offers stay unmatched, and publish-issue can still publish
+              # with that shop's new games missing from `fresh`. Conditional requests are a
+              # prerequisite for bringing this pipeline up — the slack assumption only holds
+              # once they land. Not guarded here — that would be a code change, not a
+              # manifest one.
+              args: ["match"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+                - name: ANTHROPIC_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-anthropic
+                      key: ANTHROPIC_API_KEY
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: publish-issue
+  namespace: planszomat
+spec:
+  schedule: "0 5 * * *"
+  # A node/controller outage over 01:00-05:00 should skip a badly-missed slot rather
+  # than fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself.
+  # publish-issue already refuses on an incomplete night, so a skipped night here costs
+  # one issue rather than a scrambled one.
+  startingDeadlineSeconds: 900
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      # A refusal to publish is a designed outcome, not a crash — the guard and the
+      # migrations it runs first shouldn't be retried six times for it. Zero makes
+      # the refusal exactly one Job that failed once.
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:05872cd2c7da2b0b84c12892ab49023006584bd6
+              # No date argument: the command defaults to today in UTC, and the crawls
+              # it depends on ran at 01:00-02:00 the same UTC day. It refuses to publish
+              # unless every enabled shop finished a run that night, so a late crawl
+              # yields no issue rather than one that reports an outage as news.
+              args: ["publish-issue"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi

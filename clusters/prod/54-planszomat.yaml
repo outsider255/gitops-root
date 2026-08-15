@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: planszomat
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: planszomat
+  source:
+    repoURL: https://github.com/outsider255/gitops-root.git
+    targetRevision: main
+    path: apps/planszomat
+  syncPolicy:
+    automated:
+      # prune is false for the same reason it is false for motookazja: this
+      # Application owns a StatefulSet holding append-only price history. This only
+      # stops a manifest removed from apps/planszomat/ being deleted from the cluster —
+      # deleting this file itself still deletes the Application (clusters/prod is
+      # applied with prune: true by _bootstrap.yaml), and its
+      # resources-finalizer.argocd.argoproj.io then cascade-deletes the StatefulSet
+      # regardless. What actually protects the data is the PVC
+      # persistentVolumeClaimRetentionPolicy in apps/planszomat/postgres.yaml.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
