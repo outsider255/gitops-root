@@ -1,0 +1,45 @@
+# Cloudflare Tunnel: dials OUT to Cloudflare and carries api.najtanszaplansza.pl back
+# to the planszomat-api Service. Chosen over an Ingress for the same reason Postgres is
+# ClusterIP-only — zero listening ports on a public box, TLS terminates at Cloudflare,
+# and the origin IP stays hidden.
+#
+# The tunnel itself and its public-hostname route (api.najtanszaplansza.pl ->
+# http://planszomat-api.planszomat.svc.cluster.local:80) are configured in the
+# Cloudflare Zero Trust dashboard (a remotely-managed tunnel); this Deployment only
+# runs the connector. The token comes from the planszomat-tunnel secret — created like
+# every other secret in deployment-runbook Step 5, never committed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: planszomat
+spec:
+  # One replica: Cloudflare recommends two for HA, but this is a single-node cluster —
+  # a second pod on the same box protects against nothing the first isn't exposed to.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+        - name: cloudflared
+          # Pinned like every image here; --no-autoupdate because upgrades should be a
+          # commit, not something a daemon does to itself at night.
+          image: cloudflare/cloudflared:2026.8.2
+          args: ["tunnel", "--no-autoupdate", "run"]
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-tunnel
+                  key: TUNNEL_TOKEN
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi

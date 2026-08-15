@@ -1,0 +1,71 @@
+# The read API. Strictly read-only — every route maps to a Core handler and nothing
+# writes; it never runs migrations (the CLI does, and the runbook migrates by hand
+# first). Reached only from inside the cluster: cloudflared (cloudflared.yaml) is what
+# exposes it as api.najtanszaplansza.pl, so there is no Ingress and no open port.
+#
+# Same pinning discipline as cronjobs.yaml: bump the image only to a SHA a green CI
+# run on master has pushed. The API image is ghcr.io/outsider255/planszomat-api —
+# built from Dockerfile.api, separate from the CLI image.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planszomat-api
+  namespace: planszomat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: planszomat-api
+  template:
+    metadata:
+      labels:
+        app: planszomat-api
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: api
+          image: ghcr.io/outsider255/planszomat-api:840c1b6cc8ce9c659be83585b6d5a9461be82b80
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PLANSZOMAT_DB
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-db
+                  key: PLANSZOMAT_DB
+            # The API refuses to start without this — booting without it would serve
+            # /basket/plan unprotected. Until the planszomat-supabase secret exists
+            # the pod sits in CreateContainerConfigError, exactly like postgres did
+            # before its secret; it self-heals when the secret appears.
+            - name: SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-supabase
+                  key: SUPABASE_URL
+          # TCP, not HTTP: there is no /health route, and probing /deals would run a
+          # real database query every period for nothing.
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: planszomat-api
+  namespace: planszomat
+spec:
+  selector:
+    app: planszomat-api
+  ports:
+    - port: 80
+      targetPort: http
