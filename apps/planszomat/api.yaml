@@ -48,7 +48,7 @@ spec:
             # admit nobody); a plain value, not a secret — it gates nothing by secrecy,
             # the Supabase-signed token's email claim does the work.
             - name: PLANSZOMAT_ADMIN_EMAIL
-              value: giffcik.pl@gmail.com
+              value: outsider255@gmail.com
           # TCP, not HTTP: there is no /health route, and probing /deals would run a
           # real database query every period for nothing.
           readinessProbe:
