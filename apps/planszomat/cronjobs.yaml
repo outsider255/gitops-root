@@ -9,8 +9,8 @@
 # at 01:00 should always have a commit behind it and be revertible. Bump the SHA only to
 # one a green CI run on master has actually pushed.
 #
-# All five image lines below must move together — an operator who updates four and misses
-# the fifth gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
+# All six image lines below must move together — an operator who updates five and misses
+# the sixth gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
 # surface it. Verify after any bump:
 #   grep -o '^ *image: ghcr.io/outsider255/planszomat-cli:[^ ]*' cronjobs.yaml | sort -u
 # must print exactly one line.
@@ -46,7 +46,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:423ccef1c9096c18a0c378a8ac6bffbb0e32cd13
+              image: ghcr.io/outsider255/planszomat-cli:151db68bdbf3d14a30902115d977458c1c0f0f0a
               args: ["crawl", "rebel"]
               env:
                 - name: PLANSZOMAT_DB
@@ -97,7 +97,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:423ccef1c9096c18a0c378a8ac6bffbb0e32cd13
+              image: ghcr.io/outsider255/planszomat-cli:151db68bdbf3d14a30902115d977458c1c0f0f0a
               args: ["crawl", "planszostrefa"]
               env:
                 - name: PLANSZOMAT_DB
@@ -148,7 +148,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:423ccef1c9096c18a0c378a8ac6bffbb0e32cd13
+              image: ghcr.io/outsider255/planszomat-cli:151db68bdbf3d14a30902115d977458c1c0f0f0a
               args: ["crawl", "aleplanszowki"]
               env:
                 - name: PLANSZOMAT_DB
@@ -195,7 +195,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:423ccef1c9096c18a0c378a8ac6bffbb0e32cd13
+              image: ghcr.io/outsider255/planszomat-cli:151db68bdbf3d14a30902115d977458c1c0f0f0a
               # Known gap, accepted for now: publish-issue's guard only checks that every
               # enabled shop has a finished crawl_run for the date — it does not check that
               # match has finished processing that crawl's offers. Sitemap-lastmod skipping
@@ -252,7 +252,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:423ccef1c9096c18a0c378a8ac6bffbb0e32cd13
+              image: ghcr.io/outsider255/planszomat-cli:151db68bdbf3d14a30902115d977458c1c0f0f0a
               # No date argument: the command defaults to today in UTC, and the crawls
               # it depends on ran at 01:00-02:00 the same UTC day. It refuses to publish
               # unless every enabled shop finished a run that night, so a late crawl
@@ -264,6 +264,56 @@ spec:
                     secretKeyRef:
                       name: planszomat-db
                       key: PLANSZOMAT_DB
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sync-bgg
+  namespace: planszomat
+spec:
+  # After publish-issue (05:00): nothing downstream waits on alt names tonight — they
+  # sharpen tomorrow's trigram matching, not today's issue.
+  schedule: "0 6 * * *"
+  startingDeadlineSeconds: 900
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # BGG throttles hard (5 s between requests); unattended retries against a
+      # throttling API are the crawl argument all over again.
+      backoffLimit: 1
+      # A nightly slice is ~18 min (ceil(30k/7) ids at 20-per-5s). One hour bounds a
+      # wedged run without killing a slow one.
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:151db68bdbf3d14a30902115d977458c1c0f0f0a
+              # No id-file: database mode syncs the ceil(n/7) stalest-synced bgg_item
+              # rows, so the whole catalogue's alt names roll over every seven nights.
+              args: ["sync-bgg"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+                - name: BGG_API_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-bgg
+                      key: BGG_API_TOKEN
               resources:
                 requests:
                   cpu: 100m
