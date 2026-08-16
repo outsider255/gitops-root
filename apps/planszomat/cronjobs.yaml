@@ -210,12 +210,13 @@ spec:
                     secretKeyRef:
                       name: planszomat-db
                       key: PLANSZOMAT_DB
-                # The CLI uses Gemini when GEMINI_API_KEY is set, Anthropic otherwise.
-                - name: GEMINI_API_KEY
+                # The CLI picks the adjudicator by env: OpenRouter first, then Gemini,
+                # then Anthropic.
+                - name: OPENROUTER_API_KEY
                   valueFrom:
                     secretKeyRef:
-                      name: planszomat-gemini
-                      key: GEMINI_API_KEY
+                      name: planszomat-openrouter
+                      key: OPENROUTER_API_KEY
               resources:
                 requests:
                   cpu: 100m
