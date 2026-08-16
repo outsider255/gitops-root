@@ -100,12 +100,15 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 30
             failureThreshold: 5
+          # Sized for many concurrent crawlers: shared_buffers (128Mi) plus one backend
+          # per connection. A night of 10-15 shops crawling at once is ~30 connections,
+          # each with work_mem headroom, projecting ~550Mi peak — 1Gi left no margin.
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 512Mi
             limits:
-              memory: 1Gi
+              memory: 2Gi
   volumeClaimTemplates:
     - metadata:
         name: postgres-data
