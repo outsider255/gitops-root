@@ -5,8 +5,9 @@
 # docs/known-issues.md. Order is load-bearing: publish-issue's `fresh` section only counts
 # a game as new if it was both
 # crawled in the window AND already match_status = matched, so match must finish first.
-# publish-issue also refuses outright unless every enabled shop has a finished crawl_run
-# for that UTC date — an overrunning crawl yields no issue rather than a wrong one.
+# publish-issue also refuses unless a majority of enabled shops have a finished crawl_run
+# for that UTC date — so a mass overrun still yields no issue rather than a wrong one, while
+# one overrunning shop no longer sinks the whole night.
 #
 # Image is pinned to a git SHA, not :latest: a change in behaviour for a job nobody watches
 # at 01:00 should always have a commit behind it and be revertible. Bump the SHA only to
