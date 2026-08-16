@@ -1,6 +1,9 @@
-# Nightly pipeline: three crawls, then match, then publish-issue. The gaps between
-# schedules are deliberately generous — see CLAUDE.md and docs/known-issues.md. Order is
-# load-bearing: publish-issue's `fresh` section only counts a game as new if it was both
+# Nightly pipeline: all shop crawls fire together at 01:00, then match (03:30), then
+# publish-issue (05:00). The crawls run as independent parallel pods — measured at
+# ~100-160Mi each, so the node (32Gi) and Postgres carry 10-15 at once without staggering;
+# the ~90min gap to match absorbs a steady-state (~1h) crawl. See CLAUDE.md and
+# docs/known-issues.md. Order is load-bearing: publish-issue's `fresh` section only counts
+# a game as new if it was both
 # crawled in the window AND already match_status = matched, so match must finish first.
 # publish-issue also refuses outright unless every enabled shop has a finished crawl_run
 # for that UTC date — an overrunning crawl yields no issue rather than a wrong one.
@@ -71,7 +74,7 @@ metadata:
   name: crawl-planszostrefa
   namespace: planszomat
 spec:
-  schedule: "30 1 * * *"
+  schedule: "0 1 * * *"
   # A node/controller outage over 01:00 should skip a badly-missed slot rather than
   # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
   # a delayed crawl landing on top of match or publish-issue would scramble the night.
@@ -122,7 +125,7 @@ metadata:
   name: crawl-aleplanszowki
   namespace: planszomat
 spec:
-  schedule: "0 2 * * *"
+  schedule: "0 1 * * *"
   # A node/controller outage over 01:00 should skip a badly-missed slot rather than
   # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
   # a delayed crawl landing on top of match or publish-issue would scramble the night.
