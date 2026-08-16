@@ -46,7 +46,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:05d03a3e18fce32eaacf89ece61e0a402515e55d
+              image: ghcr.io/outsider255/planszomat-cli:d46386bcaa193657618cc9cead6afd3d13a515c7
               args: ["crawl", "rebel"]
               env:
                 - name: PLANSZOMAT_DB
@@ -97,7 +97,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:05d03a3e18fce32eaacf89ece61e0a402515e55d
+              image: ghcr.io/outsider255/planszomat-cli:d46386bcaa193657618cc9cead6afd3d13a515c7
               args: ["crawl", "planszostrefa"]
               env:
                 - name: PLANSZOMAT_DB
@@ -148,7 +148,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:05d03a3e18fce32eaacf89ece61e0a402515e55d
+              image: ghcr.io/outsider255/planszomat-cli:d46386bcaa193657618cc9cead6afd3d13a515c7
               args: ["crawl", "aleplanszowki"]
               env:
                 - name: PLANSZOMAT_DB
@@ -195,7 +195,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:05d03a3e18fce32eaacf89ece61e0a402515e55d
+              image: ghcr.io/outsider255/planszomat-cli:d46386bcaa193657618cc9cead6afd3d13a515c7
               # Known gap, accepted for now: publish-issue's guard only checks that every
               # enabled shop has a finished crawl_run for the date — it does not check that
               # match has finished processing that crawl's offers. Sitemap-lastmod skipping
@@ -253,7 +253,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:05d03a3e18fce32eaacf89ece61e0a402515e55d
+              image: ghcr.io/outsider255/planszomat-cli:d46386bcaa193657618cc9cead6afd3d13a515c7
               # No date argument: the command defaults to today in UTC, and the crawls
               # it depends on ran at 01:00-02:00 the same UTC day. It refuses to publish
               # unless every enabled shop finished a run that night, so a late crawl
@@ -300,7 +300,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:05d03a3e18fce32eaacf89ece61e0a402515e55d
+              image: ghcr.io/outsider255/planszomat-cli:d46386bcaa193657618cc9cead6afd3d13a515c7
               # No id-file: database mode syncs the ceil(n/7) stalest-synced bgg_item
               # rows, so the whole catalogue's alt names roll over every seven nights.
               args: ["sync-bgg"]
