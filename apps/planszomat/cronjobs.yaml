@@ -12,11 +12,55 @@
 # at 01:00 should always have a commit behind it and be revertible. Bump the SHA only to
 # one a green CI run on master has actually pushed.
 #
-# All six image lines below must move together — an operator who updates five and misses
-# the sixth gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
+# All seven image lines below must move together — an operator who updates six and misses
+# the seventh gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
 # surface it. Verify after any bump:
 #   grep -o '^ *image: ghcr.io/outsider255/planszomat-cli:[^ ]*' cronjobs.yaml | sort -u
 # must print exactly one line.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: check-categories
+  namespace: planszomat
+spec:
+  # Before the crawls: a new category accepted in the morning's review-categories run
+  # is crawled the following night. The job is two homepage fetches and a set-diff —
+  # no model call, no third-party API beyond the shops themselves.
+  schedule: "30 0 * * *"
+  startingDeadlineSeconds: 900
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # Same courtesy argument as the crawls: don't hammer a shop that just refused us.
+      # Exit 1 also covers a dead selector (no-links), which retrying cannot fix.
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:d46386bcaa193657618cc9cead6afd3d13a515c7
+              # Queues category_review rows for the local review-categories CLI, which
+              # rewrites the shop config in git; this job never changes crawl scope itself.
+              args: ["check-categories"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
