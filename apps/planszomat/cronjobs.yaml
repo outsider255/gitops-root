@@ -1,7 +1,7 @@
-# Nightly pipeline: crawls -> match -> check-matches -> publish-issue -> sync-bgg.
-# All shop crawls fire together at 01:00, then match (03:30), check-matches (04:00), and
-# publish-issue (05:00). The crawls run as independent parallel pods — measured at
-# check-categories runs separately at 00:30.
+# UTC sequence: check-categories 00:30; crawls 01:00; match 03:00-04:15;
+# check-matches 04:15-04:45; publish-issue 05:00; sync-bgg 06:00.
+# The pipeline is crawls -> match -> check-matches -> publish-issue -> sync-bgg.
+# The crawls run as independent parallel pods — measured at
 # ~100-160Mi each, so the node (32Gi) and Postgres carry 10-15 at once without staggering;
 # the ~90min gap to match absorbs a steady-state (~1h) crawl. See CLAUDE.md and
 # docs/known-issues.md. Order is load-bearing: publish-issue's `fresh` section only counts
@@ -26,6 +26,7 @@ metadata:
   name: check-categories
   namespace: planszomat
 spec:
+  timeZone: Etc/UTC
   # Before the crawls: a new category accepted in the morning's review-categories run
   # is crawled the following night. The job is two homepage fetches and a set-diff —
   # no model call, no third-party API beyond the shops themselves.
@@ -70,15 +71,16 @@ metadata:
   name: check-matches
   namespace: planszomat
 spec:
-  # One hour before publish-issue leaves room for a short database check to retry.
-  schedule: "0 4 * * *"
+  # A 15-minute start window plus this 15-minute deadline ends by 04:45, before publish.
+  schedule: "15 4 * * *"
+  timeZone: Etc/UTC
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 7200
+      activeDeadlineSeconds: 900
       template:
         spec:
           restartPolicy: OnFailure
@@ -107,6 +109,7 @@ metadata:
   name: crawl-rebel
   namespace: planszomat
 spec:
+  timeZone: Etc/UTC
   schedule: "0 1 * * *"
   # A node/controller outage over 01:00 should skip a badly-missed slot rather than
   # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
@@ -158,6 +161,7 @@ metadata:
   name: crawl-planszostrefa
   namespace: planszomat
 spec:
+  timeZone: Etc/UTC
   schedule: "0 1 * * *"
   # A node/controller outage over 01:00 should skip a badly-missed slot rather than
   # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
@@ -209,6 +213,7 @@ metadata:
   name: crawl-aleplanszowki
   namespace: planszomat
 spec:
+  timeZone: Etc/UTC
   schedule: "0 1 * * *"
   # A node/controller outage over 01:00 should skip a badly-missed slot rather than
   # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
@@ -260,8 +265,10 @@ metadata:
   name: match
   namespace: planszomat
 spec:
-  schedule: "30 3 * * *"
-  # A node/controller outage over 01:00-03:30 should skip a badly-missed slot rather
+  # A 15-minute start window plus this one-hour deadline ends by 04:15, before the guard.
+  schedule: "0 3 * * *"
+  timeZone: Etc/UTC
+  # A node/controller outage over 01:00-03:00 should skip a badly-missed slot rather
   # than fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself,
   # and a delayed match landing on top of publish-issue would scramble the night.
   startingDeadlineSeconds: 900
@@ -274,7 +281,7 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 7200
+      activeDeadlineSeconds: 3600
       template:
         spec:
           restartPolicy: OnFailure
@@ -317,6 +324,7 @@ metadata:
   name: publish-issue
   namespace: planszomat
 spec:
+  timeZone: Etc/UTC
   schedule: "0 5 * * *"
   # A node/controller outage over 01:00-05:00 should skip a badly-missed slot rather
   # than fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself.
@@ -368,6 +376,7 @@ spec:
   # After publish-issue (05:00): nothing downstream waits on alt names tonight — they
   # sharpen tomorrow's trigram matching, not today's issue.
   schedule: "0 6 * * *"
+  timeZone: Etc/UTC
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
