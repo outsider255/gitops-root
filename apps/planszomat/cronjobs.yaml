@@ -88,7 +88,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:12cacfba8a5e135b53f897902657770347fe9b69
+              image: ghcr.io/outsider255/planszomat-cli:c0185fa9399d03859423305c789399ba23b23369
               args: ["check-matches"]
               env:
                 - name: PLANSZOMAT_DB
