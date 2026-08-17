@@ -1,4 +1,5 @@
-# Nightly pipeline: all shop crawls fire together at 01:00, then match (03:30), then
+# Nightly pipeline: crawls -> match -> check-matches -> publish-issue -> sync-bgg.
+# All shop crawls fire together at 01:00, then match (03:30), check-matches (04:00), and
 # publish-issue (05:00). The crawls run as independent parallel pods — measured at
 # ~100-160Mi each, so the node (32Gi) and Postgres carry 10-15 at once without staggering;
 # the ~90min gap to match absorbs a steady-state (~1h) crawl. See CLAUDE.md and
@@ -13,8 +14,8 @@
 # at 01:00 should always have a commit behind it and be revertible. Bump the SHA only to
 # one a green CI run on master has actually pushed.
 #
-# All seven image lines below must move together — an operator who updates six and misses
-# the seventh gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
+# All nine image lines below must move together — an operator who updates eight and misses
+# the ninth gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
 # surface it. Verify after any bump:
 #   grep -o '^ *image: ghcr.io/outsider255/planszomat-cli:[^ ]*' cronjobs.yaml | sort -u
 # must print exactly one line.
@@ -49,6 +50,43 @@ spec:
               # Queues category_review rows for the local review-categories CLI, which
               # rewrites the shop config in git; this job never changes crawl scope itself.
               args: ["check-categories"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: check-matches
+  namespace: planszomat
+spec:
+  # One hour before publish-issue leaves room for a short database check to retry.
+  schedule: "0 4 * * *"
+  startingDeadlineSeconds: 900
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 7200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:12cacfba8a5e135b53f897902657770347fe9b69
+              args: ["check-matches"]
               env:
                 - name: PLANSZOMAT_DB
                   valueFrom:
