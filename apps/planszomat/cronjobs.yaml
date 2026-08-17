@@ -1,6 +1,7 @@
 # Nightly pipeline: crawls -> match -> check-matches -> publish-issue -> sync-bgg.
 # All shop crawls fire together at 01:00, then match (03:30), check-matches (04:00), and
 # publish-issue (05:00). The crawls run as independent parallel pods — measured at
+# check-categories runs separately at 00:30.
 # ~100-160Mi each, so the node (32Gi) and Postgres carry 10-15 at once without staggering;
 # the ~90min gap to match absorbs a steady-state (~1h) crawl. See CLAUDE.md and
 # docs/known-issues.md. Order is load-bearing: publish-issue's `fresh` section only counts
@@ -14,8 +15,8 @@
 # at 01:00 should always have a commit behind it and be revertible. Bump the SHA only to
 # one a green CI run on master has actually pushed.
 #
-# All nine image lines below must move together — an operator who updates eight and misses
-# the ninth gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
+# All eight image lines below must move together — an operator who updates seven and misses
+# the eighth gets ImagePullBackOff at 01:00 with no alerting anywhere in this project to
 # surface it. Verify after any bump:
 #   grep -o '^ *image: ghcr.io/outsider255/planszomat-cli:[^ ]*' cronjobs.yaml | sort -u
 # must print exactly one line.
