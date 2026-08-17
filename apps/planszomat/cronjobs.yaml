@@ -350,9 +350,9 @@ spec:
             - name: cli
               image: ghcr.io/outsider255/planszomat-cli:c0185fa9399d03859423305c789399ba23b23369
               # No date argument: the command defaults to today in UTC, and the crawls
-              # it depends on ran at 01:00-02:00 the same UTC day. It refuses to publish
-              # unless a majority of enabled shops finished a run that night, so a late crawl
-              # yields no issue rather than one that reports an outage as news.
+              # it depends on ran at 01:00-02:00 the same UTC day. Only failure to reach a
+              # strict majority of enabled shops blocks publication; a minority outage still
+              # publishes with "gone" safeguards for groups the missing shop might hold.
               args: ["publish-issue"]
               env:
                 - name: PLANSZOMAT_DB
