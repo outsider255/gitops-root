@@ -265,6 +265,7 @@ metadata:
   name: match
   namespace: planszomat
 spec:
+  suspend: true
   # A 15-minute start window plus this one-hour deadline ends by 04:15, before the guard.
   schedule: "0 3 * * *"
   timeZone: Etc/UTC
@@ -373,6 +374,7 @@ metadata:
   name: sync-bgg
   namespace: planszomat
 spec:
+  suspend: true
   # After publish-issue (05:00): nothing downstream waits on alt names tonight — they
   # sharpen tomorrow's trigram matching, not today's issue.
   schedule: "0 6 * * *"
@@ -411,6 +413,11 @@ spec:
                     secretKeyRef:
                       name: planszomat-bgg
                       key: BGG_API_TOKEN
+                - name: OPENROUTER_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-openrouter
+                      key: OPENROUTER_API_KEY
               resources:
                 requests:
                   cpu: 100m
