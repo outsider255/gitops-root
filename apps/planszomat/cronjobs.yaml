@@ -312,6 +312,13 @@ spec:
                     secretKeyRef:
                       name: planszomat-openrouter
                       key: OPENROUTER_API_KEY
+                # Fallback candidate search uses BGG XML API for offers that have no
+                # sufficient local candidate. The API requires the application token.
+                - name: BGG_API_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-bgg
+                      key: BGG_API_TOKEN
               resources:
                 requests:
                   cpu: 100m
