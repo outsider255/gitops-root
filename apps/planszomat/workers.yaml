@@ -6,7 +6,7 @@ metadata:
   name: match-worker
   namespace: planszomat
 spec:
-  replicas: 1
+  replicas: 0
   revisionHistoryLimit: 3
   strategy:
     type: Recreate
