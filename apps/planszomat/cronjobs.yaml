@@ -270,7 +270,7 @@ metadata:
   name: match
   namespace: planszomat
 spec:
-  suspend: true
+  suspend: false
   # Matching is local-only and fast; frequent runs enqueue unresolved work without waiting
   # for BGG or OpenRouter. The durable workers drain those queues independently.
   schedule: "*/5 * * * *"
