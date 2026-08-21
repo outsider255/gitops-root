@@ -26,6 +26,7 @@ metadata:
   name: check-categories
   namespace: planszomat
 spec:
+  suspend: true
   timeZone: Etc/UTC
   # Before the crawls: a new category accepted in the morning's review-categories run
   # is crawled the following night. The job is two homepage fetches and a set-diff —
@@ -71,6 +72,7 @@ metadata:
   name: check-matches
   namespace: planszomat
 spec:
+  suspend: true
   # A 15-minute start window plus this 15-minute deadline ends by 04:45, before publish.
   schedule: "15 4 * * *"
   timeZone: Etc/UTC
@@ -109,6 +111,7 @@ metadata:
   name: crawl-rebel
   namespace: planszomat
 spec:
+  suspend: true
   timeZone: Etc/UTC
   schedule: "0 1 * * *"
   # A node/controller outage over 01:00 should skip a badly-missed slot rather than
@@ -161,6 +164,7 @@ metadata:
   name: crawl-planszostrefa
   namespace: planszomat
 spec:
+  suspend: true
   timeZone: Etc/UTC
   schedule: "0 1 * * *"
   # A node/controller outage over 01:00 should skip a badly-missed slot rather than
@@ -213,6 +217,7 @@ metadata:
   name: crawl-aleplanszowki
   namespace: planszomat
 spec:
+  suspend: true
   timeZone: Etc/UTC
   schedule: "0 1 * * *"
   # A node/controller outage over 01:00 should skip a badly-missed slot rather than
@@ -291,13 +296,8 @@ spec:
           containers:
             - name: cli
               image: ghcr.io/outsider255/planszomat-cli:006a3a74ef88530f60f57c55af7fa17c29a1e21e
-              # Known gap, accepted for now: publish-issue's guard only checks that a majority
-              # of enabled shops have a finished crawl_run for the date — it does not check that
-              # match has finished processing that crawl's offers. Sitemap-lastmod skipping
-              # keeps a steady-state rebel night around an hour, so the slack holds — but a
-              # full re-fetch night (the first ever, or after a wiped database) overruns
-              # 03:00 and those offers stay unmatched until the next night. Not guarded
-              # here — that would be a code change, not a manifest one.
+              # Local-only: deterministic evidence, cache lookup, and durable queue writes.
+              # Remote BGG/OpenRouter calls belong exclusively to the worker Deployments.
               args: ["match"]
               env:
                 - name: PLANSZOMAT_DB
@@ -305,20 +305,6 @@ spec:
                     secretKeyRef:
                       name: planszomat-db
                       key: PLANSZOMAT_DB
-                # The CLI picks the adjudicator by env: OpenRouter first, then Gemini,
-                # then Anthropic.
-                - name: OPENROUTER_API_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: planszomat-openrouter
-                      key: OPENROUTER_API_KEY
-                # Fallback candidate search uses BGG XML API for offers that have no
-                # sufficient local candidate. The API requires the application token.
-                - name: BGG_API_TOKEN
-                  valueFrom:
-                    secretKeyRef:
-                      name: planszomat-bgg
-                      key: BGG_API_TOKEN
               resources:
                 requests:
                   cpu: 100m
@@ -332,6 +318,7 @@ metadata:
   name: publish-issue
   namespace: planszomat
 spec:
+  suspend: true
   timeZone: Etc/UTC
   schedule: "0 5 * * *"
   # A node/controller outage over 01:00-05:00 should skip a badly-missed slot rather

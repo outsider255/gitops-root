@@ -1,0 +1,131 @@
+# Durable asynchronous workers. Rollout starts at zero replicas; enable only after the
+# documented smoke tests. Recreate plus one replica preserves the single BGG gate and
+# each name worker instance's adaptive OpenRouter concurrency.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: match-worker
+  namespace: planszomat
+spec:
+  replicas: 0
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: match-worker
+  template:
+    metadata:
+      labels:
+        app: match-worker
+    spec:
+      terminationGracePeriodSeconds: 60
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: cli
+          image: ghcr.io/outsider255/planszomat-cli:006a3a74ef88530f60f57c55af7fa17c29a1e21e
+          args: ["match-worker"]
+          env:
+            - name: PLANSZOMAT_DB
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-db
+                  key: PLANSZOMAT_DB
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-openrouter
+                  key: OPENROUTER_API_KEY
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bgg-worker
+  namespace: planszomat
+spec:
+  replicas: 0
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bgg-worker
+  template:
+    metadata:
+      labels:
+        app: bgg-worker
+    spec:
+      terminationGracePeriodSeconds: 60
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: cli
+          image: ghcr.io/outsider255/planszomat-cli:006a3a74ef88530f60f57c55af7fa17c29a1e21e
+          args: ["bgg-worker"]
+          env:
+            - name: PLANSZOMAT_DB
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-db
+                  key: PLANSZOMAT_DB
+            - name: BGG_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-bgg
+                  key: BGG_API_TOKEN
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: classify-names-worker
+  namespace: planszomat
+spec:
+  replicas: 0
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: classify-names-worker
+  template:
+    metadata:
+      labels:
+        app: classify-names-worker
+    spec:
+      terminationGracePeriodSeconds: 60
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: cli
+          image: ghcr.io/outsider255/planszomat-cli:006a3a74ef88530f60f57c55af7fa17c29a1e21e
+          args: ["classify-names-worker"]
+          env:
+            - name: PLANSZOMAT_DB
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-db
+                  key: PLANSZOMAT_DB
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-openrouter
+                  key: OPENROUTER_API_KEY
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
