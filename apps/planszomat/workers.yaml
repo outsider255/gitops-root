@@ -1,5 +1,4 @@
-# Durable asynchronous workers. Rollout starts at zero replicas; enable only after the
-# documented smoke tests. Recreate plus one replica preserves the single BGG gate and
+# Durable asynchronous workers. Recreate plus one replica preserves the single BGG gate and
 # each name worker instance's adaptive OpenRouter concurrency.
 apiVersion: apps/v1
 kind: Deployment
@@ -7,7 +6,7 @@ metadata:
   name: match-worker
   namespace: planszomat
 spec:
-  replicas: 0
+  replicas: 1
   revisionHistoryLimit: 3
   strategy:
     type: Recreate
@@ -50,7 +49,7 @@ metadata:
   name: bgg-worker
   namespace: planszomat
 spec:
-  replicas: 0
+  replicas: 1
   revisionHistoryLimit: 3
   strategy:
     type: Recreate
@@ -93,7 +92,7 @@ metadata:
   name: classify-names-worker
   namespace: planszomat
 spec:
-  replicas: 0
+  replicas: 1
   revisionHistoryLimit: 3
   strategy:
     type: Recreate
