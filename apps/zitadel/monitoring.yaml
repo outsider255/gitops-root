@@ -1,8 +1,32 @@
 apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: zitadel-cert-manager
+  namespace: zitadel
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - cert-manager
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+      app.kubernetes.io/instance: cert-manager
+      app.kubernetes.io/component: controller
+  podMetricsEndpoints:
+    - port: http-metrics
+      honorLabels: true
+---
+apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: zitadel
   namespace: zitadel
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
   labels:
     release: monitoring
 spec:
@@ -21,12 +45,44 @@ spec:
           annotations:
             summary: ZITADEL metrics target is unavailable
         - alert: ZitadelCertificateExpiringSoon
-          expr: certmanager_certificate_expiration_timestamp_seconds{namespace="zitadel",name=~"zitadel-(system|planszomat)-tls"} - time() < 14 * 24 * 60 * 60
+          expr: |
+            (
+              certmanager_certificate_expiration_timestamp_seconds{namespace="zitadel",name=~"zitadel-(system|planszomat)-tls"} - time() < 14 * 24 * 60 * 60
+            )
+              and on (namespace, name)
+            (
+              certmanager_certificate_ready_status{namespace="zitadel",name=~"zitadel-(system|planszomat)-tls",condition="True"} == 1
+            )
+          for: 15m
           labels:
             severity: warning
           annotations:
             summary: ZITADEL certificate expires in less than 14 days
             description: Certificate {{ $labels.name }} is approaching expiry.
+        - alert: ZitadelCertificateExpiryMissing
+          expr: |
+            (
+              certmanager_certificate_ready_status{namespace="zitadel",name=~"zitadel-(system|planszomat)-tls",condition="True"} == 1
+            )
+              unless on (namespace, name)
+            certmanager_certificate_expiration_timestamp_seconds{namespace="zitadel",name=~"zitadel-(system|planszomat)-tls"}
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: A Ready ZITADEL certificate has no expiry metric
+            description: Certificate {{ $labels.name }} is Ready but its expiry metric is absent.
+        - alert: ZitadelCertificateNotReady
+          expr: |
+            certmanager_certificate_ready_status{namespace="zitadel",name=~"zitadel-(system|planszomat)-tls",condition="True"} == 0
+              or absent(certmanager_certificate_ready_status{namespace="zitadel",name="zitadel-system-tls",condition="True"})
+              or absent(certmanager_certificate_ready_status{namespace="zitadel",name="zitadel-planszomat-tls",condition="True"})
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: A ZITADEL certificate is not ready
+            description: Certificate {{ $labels.name }} has not been Ready for 15 minutes.
         - alert: ZitadelPodRestarting
           expr: increase(kube_pod_container_status_restarts_total{namespace="zitadel"}[15m]) > 0
           labels:

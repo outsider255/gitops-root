@@ -40,6 +40,9 @@ zitadel:
     # Provisioning uses the external System API user and runtime-config Human.
     # Disable the chart's default iam-admin machine/PAT writers and their RBAC.
     FirstInstance:
+      # The later external config overlay must also set this false initially.
+      # Retirement sets this true while removing FirstInstance from that overlay.
+      Skip: false
       Org:
         Machine: null
     SystemAPIUsers:
@@ -61,6 +64,7 @@ extraVolumeMounts:
 
 podAnnotations:
   zitadel.najtanszaplansza.pl/external-secret-revision: "1"
+  zitadel.najtanszaplansza.pl/system-api-key-revision: "1"
 
 login:
   enabled: true
