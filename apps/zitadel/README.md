@@ -17,8 +17,10 @@ operator network path is established.
 
 ## Metrics exposure
 
-The public Traefik route explicitly denies the exact `/debug/metrics` path on both
-ZITADEL hosts before it reaches the core Service. This leaves other `/debug/*` endpoints
+The public Traefik route explicitly denies the `/debug/metrics` endpoint on both
+ZITADEL hosts before it reaches the core Service. Its boundary-aware matcher covers both
+the literal separator and case-insensitive encoded `%2F`, so an encoded slash cannot be
+decoded by the backend into a metrics request. It leaves unrelated `/debug/*` endpoints
 and the System/Product Login V2 routes unchanged. Prometheus must scrape core metrics
 directly through the rendered `zitadel` Service and its ServiceMonitor; it must not use
 either public hostname.
