@@ -15,6 +15,14 @@ is supplied. `login.najtanszaplansza.pl` is the Planszomat product issuer/login 
 and must remain free of an operator-only allow-list. Revisit this restriction when the
 operator network path is established.
 
+## Metrics exposure
+
+The public Traefik route explicitly denies the exact `/debug/metrics` path on both
+ZITADEL hosts before it reaches the core Service. This leaves other `/debug/*` endpoints
+and the System/Product Login V2 routes unchanged. Prometheus must scrape core metrics
+directly through the rendered `zitadel` Service and its ServiceMonitor; it must not use
+either public hostname.
+
 Create these Secrets out of band. Secret values and rendered Secret manifests must
 remain outside Git.
 

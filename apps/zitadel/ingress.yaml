@@ -9,6 +9,63 @@ spec:
     burst: 100
     period: 1s
 ---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: zitadel-public-metrics-deny
+  namespace: zitadel
+spec:
+  # Documentation-only address space: no Internet client can satisfy this allow-list.
+  # Applied only to the exact public metrics route below, it makes Traefik return 403
+  # before contacting the core Service.
+  ipAllowList:
+    sourceRange:
+      - 192.0.2.1/32
+      - 2001:db8::1/128
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: zitadel-system-public-metrics-deny
+  namespace: zitadel
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    # Explicit priority prevents the ordinary Ingress / Prefix route below from
+    # exposing metrics. Path() deliberately leaves all other /debug/* endpoints alone.
+    - match: Host(`identity.najtanszaplansza.pl`) && Path(`/debug/metrics`)
+      kind: Rule
+      priority: 200
+      middlewares:
+        - name: zitadel-public-metrics-deny
+      services:
+        # The deny middleware short-circuits before this backend is contacted.
+        - name: zitadel
+          port: 8080
+  tls:
+    secretName: zitadel-system-tls
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: zitadel-planszomat-public-metrics-deny
+  namespace: zitadel
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`login.najtanszaplansza.pl`) && Path(`/debug/metrics`)
+      kind: Rule
+      priority: 200
+      middlewares:
+        - name: zitadel-public-metrics-deny
+      services:
+        - name: zitadel
+          port: 8080
+  tls:
+    secretName: zitadel-planszomat-tls
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
