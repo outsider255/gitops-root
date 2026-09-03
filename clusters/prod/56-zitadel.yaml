@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zitadel
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: zitadel
+  sources:
+    - repoURL: https://charts.zitadel.com
+      chart: zitadel
+      targetRevision: "10.0.4"
+      helm:
+        releaseName: zitadel
+        valueFiles:
+          - $values/apps/zitadel/values.yaml
+    - repoURL: https://github.com/outsider255/gitops-root.git
+      targetRevision: main
+      ref: values
+      path: apps/zitadel
+      directory:
+        exclude: values.yaml
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

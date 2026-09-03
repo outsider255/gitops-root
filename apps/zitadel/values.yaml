@@ -1,0 +1,81 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/zitadel/zitadel
+  tag: v4.17.1
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 1Gi
+
+service:
+  annotations:
+    traefik.ingress.kubernetes.io/service.serversscheme: h2c
+
+ingress:
+  enabled: false
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: monitoring
+
+zitadel:
+  masterkeySecretName: zitadel-masterkey
+  configSecretName: zitadel-runtime-config
+  configSecretKey: config-yaml
+  configmapConfig:
+    ExternalDomain: identity.najtanszaplansza.pl
+    ExternalPort: 443
+    ExternalSecure: true
+    TLS:
+      Enabled: false
+    SystemAPIUsers:
+      system-bootstrap:
+        Path: /system-api/system-user.pub
+        Memberships:
+          - MemberType: System
+            Roles:
+              - SYSTEM_OWNER
+
+extraVolumes:
+  - name: system-api-public
+    secret:
+      secretName: zitadel-system-api-public
+extraVolumeMounts:
+  - name: system-api-public
+    mountPath: /system-api
+    readOnly: true
+
+login:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ghcr.io/zitadel/zitadel-login
+    tag: v4.17.1
+    pullPolicy: IfNotPresent
+  ingress:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1
+      memory: 512Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: monitoring
+
+postgresql:
+  enabled: false
