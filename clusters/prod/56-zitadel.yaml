@@ -25,6 +25,9 @@ spec:
       directory:
         exclude: values.yaml
   syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
