@@ -1,5 +1,14 @@
 # ZITADEL prerequisites
 
+## Temporary ingress exposure risk (2026-09-03)
+
+There is currently no fixed operator VPN or public CIDR to allow-list. Consequently,
+`identity.najtanszaplansza.pl` is temporarily publicly reachable while it provides the
+neutral ZITADEL System host. No IP allow-list is attached until a stable operator path
+is supplied. `login.najtanszaplansza.pl` is the Planszomat product issuer/login host
+and must remain free of an operator-only allow-list. Revisit this restriction when the
+operator network path is established.
+
 Create these Secrets out of band. Secret values and rendered Secret manifests must
 remain outside Git.
 
