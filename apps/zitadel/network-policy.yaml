@@ -3,6 +3,8 @@ kind: NetworkPolicy
 metadata:
   name: zitadel-postgres-ingress
   namespace: zitadel
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   podSelector:
     matchLabels:

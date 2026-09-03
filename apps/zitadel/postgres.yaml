@@ -49,6 +49,8 @@ kind: NetworkPolicy
 metadata:
   name: zitadel-postgres-egress
   namespace: zitadel
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   podSelector:
     matchLabels:
@@ -76,6 +78,8 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: zitadel-postgres
+      annotations:
+        zitadel.najtanszaplansza.pl/external-secret-revision: "1"
     spec:
       containers:
         - name: postgres

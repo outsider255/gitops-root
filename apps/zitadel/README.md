@@ -169,7 +169,8 @@ need only DNS and PostgreSQL: disabling the chart machine/PAT writers removes
 their Kubernetes API dependency.
 
 Core, init, and setup use the repository-owned `zitadel-runtime` ServiceAccount;
-Login V2 uses `zitadel-login`. Both set `automountServiceAccountToken: false`.
+Login V2 uses `zitadel-login`; PostgreSQL uses the separate repository-owned
+`zitadel-postgres` ServiceAccount. All three set `automountServiceAccountToken: false`.
 The chart creates neither account and renders no Role or RoleBinding, so the
 shared runtime/bootstrap account is unprivileged and no workload receives an API
 token. Re-enable the chart machine/PAT writer only together with a separately
@@ -189,6 +190,22 @@ There is deliberately no namespace-wide default-deny policy. Add one only after
 re-rendering the pinned chart and accounting for every setup, runtime, Login V2,
 and operational path. PostgreSQL remains a headless ClusterIP Service and must
 never receive a NodePort, LoadBalancer, Ingress, or tunnel Service.
+
+The PostgreSQL egress policy is deny-all by design (`policyTypes: Egress` with no
+egress rules); database pods do not need outbound network access. Both the
+PostgreSQL ingress allow-list and this deny-all egress policy are applied at sync
+wave `-2`, before the StatefulSet at wave `-1`, avoiding an unrestricted first-sync
+window.
+
+For a database credential rotation, first create the new out-of-band Secret values,
+then use an operator PostgreSQL session to rotate the `zitadel` role password and
+verify a TCP login with the new raw password. Update the runtime `config-yaml` DSN
+using the percent-encoded userinfo form, quote the YAML value, and increment the
+Git-tracked PostgreSQL Pod annotation
+`zitadel.najtanszaplansza.pl/external-secret-revision` from its current value of
+`"1"` (or the latest value). ArgoCD then rolls the Pod. Verify both authenticated
+PostgreSQL probes and ZITADEL runtime connectivity with the new credential before
+retiring the old Secret value; never expose either value in Git or command arguments.
 
 ## Monitoring and operator checks
 
