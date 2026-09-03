@@ -9,24 +9,17 @@ data:
   10-create-zitadel.sh: |
     #!/bin/sh
     set -eu
+    export PGPASSWORD="$POSTGRES_PASSWORD"
     psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-      --set=ON_ERROR_STOP=1 --set=zitadel_password="$ZITADEL_DB_PASSWORD" \
-      --file=/docker-entrypoint-initdb.d/10-create-zitadel.sql
-    if ! psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-      --tuples-only --no-align --command="SELECT 1 FROM pg_database WHERE datname = 'zitadel'" | grep -qx 1; then
-      psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-        --set=ON_ERROR_STOP=1 --command='CREATE DATABASE zitadel OWNER zitadel'
-    fi
-  10-create-zitadel.sql: |
-    DO $$
-    BEGIN
-      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'zitadel') THEN
-        CREATE ROLE zitadel LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD :'zitadel_password';
-      ELSE
-        ALTER ROLE zitadel LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD :'zitadel_password';
-      END IF;
-    END
-    $$;
+      --set=ON_ERROR_STOP=1 <<'SQL'
+    \getenv zitadel_password ZITADEL_DB_PASSWORD
+    SELECT format('CREATE ROLE zitadel LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD %L', :'zitadel_password')
+      WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'zitadel') \gexec
+    ALTER ROLE zitadel LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD :'zitadel_password';
+    SELECT format('CREATE DATABASE zitadel OWNER zitadel')
+      WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'zitadel') \gexec
+    ALTER DATABASE zitadel OWNER TO zitadel;
+    SQL
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -86,7 +79,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:16.14-alpine3.24
+          image: postgres:16.15-alpine3.24@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
           ports:
             - name: postgres
               containerPort: 5432
@@ -105,6 +98,11 @@ spec:
                 secretKeyRef:
                   name: zitadel-db
                   key: ZITADEL_PASSWORD
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zitadel-db
+                  key: ZITADEL_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           volumeMounts:
@@ -114,12 +112,12 @@ spec:
               mountPath: /docker-entrypoint-initdb.d
           startupProbe:
             exec:
-              command: ["pg_isready", "-U", "zitadel", "-d", "zitadel"]
+              command: ["psql", "-U", "zitadel", "-d", "zitadel", "-Atqc", "SELECT 1"]
             periodSeconds: 10
             failureThreshold: 30
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "zitadel", "-d", "zitadel"]
+              command: ["psql", "-U", "zitadel", "-d", "zitadel", "-Atqc", "SELECT 1"]
             periodSeconds: 10
             failureThreshold: 6
           livenessProbe:

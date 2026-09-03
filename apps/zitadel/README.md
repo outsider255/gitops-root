@@ -51,15 +51,24 @@ and the first-login password-change requirement. It must not appear in Git.
 value in the operator password manager as well; it must not appear in Git.
 
 `zitadel-db/POSTGRES_PASSWORD` is the bootstrap-only PostgreSQL administrator
-password. `zitadel-db/ZITADEL_PASSWORD` is the separate runtime DSN password for
-the non-superuser `zitadel` LOGIN role; both values are created out of band and
-must not appear in Git. On an empty data directory, the repository-owned init
-script creates the `zitadel` database and role idempotently. PostgreSQL's official
-entrypoint runs that script only during first initialization; changing either
-password later requires an operator-managed PostgreSQL role rotation.
+password. `zitadel-db/ZITADEL_PASSWORD` is the separate raw runtime DSN password
+for the non-superuser `zitadel` LOGIN role; both values are created out of band and
+must not appear in Git. On an empty data directory, the repository-owned single
+executable init script creates or updates the role and creates the `zitadel`
+database idempotently. PostgreSQL's official entrypoint runs that script only
+during first initialization; changing either password later requires an
+operator-managed PostgreSQL role rotation.
 
-The PostgreSQL image is pinned to `postgres:16.14-alpine3.24`, an official
-multi-architecture PostgreSQL 16 Alpine tag. Patch upgrades can change the image
+The provisioning wizard must put the raw `ZITADEL_PASSWORD` in the Kubernetes
+Secret and PostgreSQL init environment unchanged. When constructing the ZITADEL
+runtime PostgreSQL DSN, percent-encode the password as URI userinfo (for example,
+raw `p@ss:word#1` becomes `p%40ss%3Aword%231`) and YAML-quote the complete DSN.
+Do not percent-encode the Kubernetes Secret value itself, and do not place a raw
+password containing `:`, `@`, `#`, `%`, `?`, or `/` unquoted in YAML.
+
+The PostgreSQL image is pinned to the official multi-architecture image
+`postgres:16.15-alpine3.24@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685`.
+Patch upgrades can change the image
 base and PostgreSQL binaries; review the official image release notes, test
 compatibility, and update this pin deliberately. Existing data directories are
 not reinitialized by the init script.
