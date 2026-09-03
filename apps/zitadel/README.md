@@ -17,6 +17,9 @@ zitadel-runtime-config
 `config-yaml` contains the PostgreSQL DSN, the first-instance human administrator,
 and the first-login password-change requirement. It must not appear in Git.
 
+`zitadel-masterkey/masterkey` must be exactly 32 printable ASCII bytes. Store this
+value in the operator password manager as well; it must not appear in Git.
+
 The System API public-key Secret is also created out of band:
 
 ```text
