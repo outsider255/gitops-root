@@ -10,7 +10,11 @@ spec:
     - name: zitadel
       rules:
         - alert: ZitadelTargetDown
-          expr: min(up{namespace="zitadel"}) == 0
+          expr: |
+            min by (namespace, service) (up{namespace="zitadel",service="zitadel"}) == 0
+              or absent(up{namespace="zitadel",service="zitadel"})
+              or min by (namespace, service) (up{namespace="zitadel",service="zitadel-login"}) == 0
+              or absent(up{namespace="zitadel",service="zitadel-login"})
           for: 5m
           labels:
             severity: critical
@@ -31,7 +35,9 @@ spec:
             summary: A ZITADEL container restarted
             description: Container {{ $labels.container }} in pod {{ $labels.pod }} restarted during the last 15 minutes.
         - alert: ZitadelPostgresNotReady
-          expr: sum(kube_pod_status_ready{namespace="zitadel",pod="zitadel-postgres-0",condition="true"}) < 1
+          expr: |
+            kube_pod_status_ready{namespace="zitadel",pod="zitadel-postgres-0",condition="true"} == 0
+              or absent(kube_pod_status_ready{namespace="zitadel",pod="zitadel-postgres-0",condition="true"})
           for: 5m
           labels:
             severity: critical

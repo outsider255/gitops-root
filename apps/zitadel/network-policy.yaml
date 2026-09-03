@@ -44,6 +44,10 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+              app.kubernetes.io/instance: traefik-kube-system
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: zitadel
@@ -59,6 +63,10 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+              app.kubernetes.io/instance: monitoring-kube-prometheus-prometheus
       ports:
         - protocol: TCP
           port: 8080
@@ -81,6 +89,10 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+              app.kubernetes.io/instance: traefik-kube-system
       ports:
         - protocol: TCP
           port: 3000
@@ -88,6 +100,10 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+              app.kubernetes.io/instance: monitoring-kube-prometheus-prometheus
       ports:
         - protocol: TCP
           port: 9464
@@ -128,12 +144,24 @@ spec:
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
+            except:
+              - 10.42.0.0/16
+              - 10.43.0.0/16
+              - 54.36.172.108/32
+              - 127.0.0.0/8
+              - 169.254.0.0/16
       ports:
         - protocol: TCP
           port: 443
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
+            except:
+              - 10.42.0.0/16
+              - 10.43.0.0/16
+              - 54.36.172.108/32
+              - 127.0.0.0/8
+              - 169.254.0.0/16
       ports:
         - protocol: TCP
           port: 587
@@ -174,13 +202,6 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
-    # The setup Job's helper containers use the Kubernetes API over HTTPS.
-    - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-      ports:
-        - protocol: TCP
-          port: 443
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -220,6 +241,12 @@ spec:
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0
+            except:
+              - 10.42.0.0/16
+              - 10.43.0.0/16
+              - 54.36.172.108/32
+              - 127.0.0.0/8
+              - 169.254.0.0/16
       ports:
         - protocol: TCP
           port: 443

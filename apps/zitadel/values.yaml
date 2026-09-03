@@ -37,6 +37,11 @@ zitadel:
     ExternalSecure: true
     TLS:
       Enabled: false
+    # Provisioning uses the external System API user and runtime-config Human.
+    # Disable the chart's default iam-admin machine/PAT writers and their RBAC.
+    FirstInstance:
+      Org:
+        Machine: null
     SystemAPIUsers:
       system-bootstrap:
         Path: /system-api/system-user.pub
@@ -79,6 +84,9 @@ login:
         release: monitoring
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+  serviceAccount:
+    create: false
+    name: zitadel-login
 
 postgresql:
   enabled: false
@@ -100,3 +108,7 @@ setupJob:
 
 cleanupJob:
   enabled: false
+
+serviceAccount:
+  create: false
+  name: zitadel-runtime

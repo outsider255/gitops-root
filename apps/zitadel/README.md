@@ -48,6 +48,11 @@ zitadel-system-api-public
 
 Keep the corresponding private key only in the password manager/operator workspace.
 
+The external `system-bootstrap` System API user is the automation identity. The
+chart's default `FirstInstance.Org.Machine` is disabled, so it does not generate
+`iam-admin` machine/PAT Secrets, kubectl writer containers, or namespace RBAC.
+The external `config-yaml` still supplies the first human administrator.
+
 `zitadel-login-service-key` must be a stable `kubernetes.io/tls` Secret whose
 `tls.crt` and `tls.key` form an RSA keypair. ZITADEL uses the public certificate
 to verify Login V2 JWTs and Login V2 uses the private key to sign them. Create
@@ -67,13 +72,37 @@ The policies intentionally target only labels rendered by chart `10.0.4`:
   `login`;
 - bootstrap Jobs: name/instance `zitadel`, component `init` or `setup`.
 
+The live ingress source is additionally pinned to
+`app.kubernetes.io/name=traefik`, instance `traefik-kube-system`; metrics ingress
+is pinned to `app.kubernetes.io/name=prometheus`, instance
+`monitoring-kube-prometheus-prometheus`. Both also retain their
+`kubernetes.io/metadata.name` namespace selectors.
+
 PostgreSQL accepts port 5432 only from the init, setup, and runtime core pods.
 Traefik in `kube-system` reaches core on 8080 and Login V2 on 3000. Prometheus in
 `monitoring` reaches the rendered metrics ports (core 8080 and Login V2 9464).
 Login V2 can reach the core Service on 8080, matching the chart-rendered
 `ZITADEL_API_URL=http://zitadel:8080` configuration. Runtime egress is limited to
-DNS, PostgreSQL, outbound HTTPS, and SMTP STARTTLS on port 587; setup Jobs also
-retain Kubernetes API access over HTTPS.
+DNS, PostgreSQL, outbound HTTPS, and SMTP STARTTLS on port 587. Bootstrap Jobs
+need only DNS and PostgreSQL: disabling the chart machine/PAT writers removes
+their Kubernetes API dependency.
+
+Core, init, and setup use the repository-owned `zitadel-runtime` ServiceAccount;
+Login V2 uses `zitadel-login`. Both set `automountServiceAccountToken: false`.
+The chart creates neither account and renders no Role or RoleBinding, so the
+shared runtime/bootstrap account is unprivileged and no workload receives an API
+token. Re-enable the chart machine/PAT writer only together with a separately
+reviewed bootstrap identity and narrowly scoped RBAC.
+
+The cluster uses flannel `10.42.0.0/16`, Service CIDR `10.43.0.0/16`, and the
+single node address `54.36.172.108`. k3s enforces policies with kube-router
+iptables chains, where Service traffic can be evaluated after DNAT as a pod or
+node destination. External HTTPS and SMTP `ipBlock` rules therefore exclude the
+Service CIDR, Pod CIDR, node `/32`, loopback, and link-local ranges. Explicit
+DNS, PostgreSQL, and Login-to-core peers remain allowed. Update these exclusions
+if cluster networking or node addresses change. An external provider resolving
+inside an excluded cluster/link-local range is intentionally unreachable; broad
+RFC1918 ranges are not excluded because providers may legitimately use them.
 
 There is deliberately no namespace-wide default-deny policy. Add one only after
 re-rendering the pinned chart and accounting for every setup, runtime, Login V2,
@@ -85,7 +114,9 @@ never receive a NodePort, LoadBalancer, Ingress, or tunnel Service.
 The pinned chart creates `release: monitoring` ServiceMonitors for core
 `/debug/metrics` and Login V2 `/metrics`. `monitoring.yaml` adds namespace-scoped
 alerts for target health, certificate expiry, container restarts, PostgreSQL
-readiness and disk space, and failed Jobs.
+readiness and disk space, and failed Jobs. Target health checks core and Login V2
+as separate rendered Service families and uses explicit `absent()` branches;
+PostgreSQL readiness likewise alerts when its pod series is missing.
 
 Before enabling Alertmanager notifications, evaluate every expression in the
 existing Prometheus UI and confirm that it returns only the intended ZITADEL
