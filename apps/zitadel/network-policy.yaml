@@ -1,0 +1,225 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zitadel-postgres-ingress
+  namespace: zitadel
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zitadel-postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: zitadel
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: zitadel
+              app.kubernetes.io/instance: zitadel
+            matchExpressions:
+              - key: app.kubernetes.io/component
+                operator: In
+                values: [init, setup, start]
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zitadel-core-ingress
+  namespace: zitadel
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zitadel
+      app.kubernetes.io/instance: zitadel
+      app.kubernetes.io/component: start
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: zitadel
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: zitadel-login
+              app.kubernetes.io/instance: zitadel
+              app.kubernetes.io/component: login
+      ports:
+        - protocol: TCP
+          port: 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zitadel-login-ingress
+  namespace: zitadel
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zitadel-login
+      app.kubernetes.io/instance: zitadel
+      app.kubernetes.io/component: login
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: TCP
+          port: 3000
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9464
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zitadel-runtime-egress
+  namespace: zitadel
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zitadel
+      app.kubernetes.io/instance: zitadel
+      app.kubernetes.io/component: start
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: zitadel
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: zitadel-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 587
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zitadel-jobs-egress
+  namespace: zitadel
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zitadel
+      app.kubernetes.io/instance: zitadel
+    matchExpressions:
+      - key: app.kubernetes.io/component
+        operator: In
+        values: [init, setup]
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: zitadel
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: zitadel-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # The setup Job's helper containers use the Kubernetes API over HTTPS.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: zitadel-login-egress
+  namespace: zitadel
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: zitadel-login
+      app.kubernetes.io/instance: zitadel
+      app.kubernetes.io/component: login
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: zitadel
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: zitadel
+              app.kubernetes.io/instance: zitadel
+              app.kubernetes.io/component: start
+      ports:
+        - protocol: TCP
+          port: 8080
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
