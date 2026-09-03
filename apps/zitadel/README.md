@@ -214,8 +214,8 @@ until every verification below passes.
    character test fixtures. Confirm operator TCP/admin access. Prepare the exact
    out-of-band replacements for both Secrets, and prepare and review/approve the
    forward GitOps revision bump for both Pod templates and the rollback revision bump
-   for both Pod templates. Push the already-reviewed forward change so it is ready to
-   roll out; do not start maintenance until all of these preparations are complete.
+   for both Pod templates. Keep both reviewed changes unpushed; do not start
+   maintenance until all of these preparations are complete.
 4. In a secure operator shell, load the new value from the password manager into an
    environment variable (never a command argument or shell-history assignment), then
    run an interactive `psql` session over TCP as the admin and execute:
@@ -229,10 +229,11 @@ until every verification below passes.
 5. Immediately replace both external Secrets out of band: `zitadel-db/ZITADEL_PASSWORD` with the
    raw new value and `zitadel-runtime-config/config-yaml` with the new encoded,
    YAML-quoted DSN. Do not replace the admin password.
-6. The already-reviewed forward GitOps change increments both revision annotations:
-   the PostgreSQL Pod template annotation in `postgres.yaml` and core `podAnnotations`
-   in `values.yaml`; allow the prepared push to proceed through the normal Git/ArgoCD
-   flow. No approval or review step is allowed inside the outage bound.
+6. Immediately after both Secrets are replaced, push the already-reviewed forward
+   GitOps change that increments both revision annotations: the PostgreSQL Pod template
+   annotation in `postgres.yaml` and core `podAnnotations` in `values.yaml`. This is
+   the sole forward push through the normal Git/ArgoCD flow. No approval or review step
+   is allowed inside the outage bound.
 7. Wait for ArgoCD to report the rollout complete, then wait for the PostgreSQL
    authenticated startup/readiness probe and core readiness. Verify positive TCP
    authentication with the new password and a complete ZITADEL application flow.
@@ -241,10 +242,11 @@ until every verification below passes.
 8. Only after all positive and negative checks pass, remove the old value from the
    password manager and any secure temporary environment.
 
-If verification fails, use the already-prepared and reviewed rollback artifacts
-immediately (no new approval or review inside the outage): restore the old role
+If verification fails, use the already-prepared and reviewed but still unpushed
+rollback artifacts immediately (no new approval or review inside the outage): restore the old role
 password using the same secure `\getenv` method, restore both external Secrets, and
-push the prepared rollback revision change for both annotations. Wait for PostgreSQL
+push the prepared rollback revision change for both annotations (it remains unpushed
+unless rollback is needed). Wait for PostgreSQL
 and core readiness, then verify old-password TCP authentication and the application
 flow. Also verify negative TCP authentication with the new password before retiring
 it. Rollback does not claim uninterrupted availability.
