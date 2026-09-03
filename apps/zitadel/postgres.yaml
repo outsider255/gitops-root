@@ -112,12 +112,12 @@ spec:
               mountPath: /docker-entrypoint-initdb.d
           startupProbe:
             exec:
-              command: ["psql", "-U", "zitadel", "-d", "zitadel", "-Atqc", "SELECT 1"]
+              command: ["psql", "-h", "127.0.0.1", "-U", "zitadel", "-d", "zitadel", "-Atqc", "SELECT 1"]
             periodSeconds: 10
             failureThreshold: 30
           readinessProbe:
             exec:
-              command: ["psql", "-U", "zitadel", "-d", "zitadel", "-Atqc", "SELECT 1"]
+              command: ["psql", "-h", "127.0.0.1", "-U", "zitadel", "-d", "zitadel", "-Atqc", "SELECT 1"]
             periodSeconds: 10
             failureThreshold: 6
           livenessProbe:
