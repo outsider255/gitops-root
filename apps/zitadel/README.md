@@ -209,7 +209,14 @@ until every verification below passes.
 2. Prepare the raw new value as `zitadel-db/ZITADEL_PASSWORD`. Prepare the matching
    runtime `config-yaml` DSN with the password percent-encoded as URI userinfo and
    the complete DSN YAML-quoted. Keep the raw value unchanged in the Secret.
-3. In a secure operator shell, load the new value from the password manager into an
+3. Before maintenance, locally validate the new raw Secret payload, its
+   percent-encoded DSN userinfo, and the YAML-quoted complete DSN using reserved-
+   character test fixtures. Confirm operator TCP/admin access. Prepare the exact
+   out-of-band replacements for both Secrets, and prepare and review/approve the
+   forward GitOps revision bump for both Pod templates and the rollback revision bump
+   for both Pod templates. Push the already-reviewed forward change so it is ready to
+   roll out; do not start maintenance until all of these preparations are complete.
+4. In a secure operator shell, load the new value from the password manager into an
    environment variable (never a command argument or shell-history assignment), then
    run an interactive `psql` session over TCP as the admin and execute:
 
@@ -219,27 +226,28 @@ until every verification below passes.
    ```
 
    Do not paste the password into SQL, a command line, or shell history.
-4. Replace both external Secrets out of band: `zitadel-db/ZITADEL_PASSWORD` with the
+5. Immediately replace both external Secrets out of band: `zitadel-db/ZITADEL_PASSWORD` with the
    raw new value and `zitadel-runtime-config/config-yaml` with the new encoded,
    YAML-quoted DSN. Do not replace the admin password.
-5. In one reviewed GitOps change, increment both revision annotations: the PostgreSQL
-   Pod template annotation in `postgres.yaml` and core `podAnnotations` in
-   `values.yaml`. Push through the normal Git/ArgoCD flow; do not claim completion
-   from a Git commit alone.
-6. Wait for ArgoCD to report the rollout complete, then wait for the PostgreSQL
+6. The already-reviewed forward GitOps change increments both revision annotations:
+   the PostgreSQL Pod template annotation in `postgres.yaml` and core `podAnnotations`
+   in `values.yaml`; allow the prepared push to proceed through the normal Git/ArgoCD
+   flow. No approval or review step is allowed inside the outage bound.
+7. Wait for ArgoCD to report the rollout complete, then wait for the PostgreSQL
    authenticated startup/readiness probe and core readiness. Verify positive TCP
    authentication with the new password and a complete ZITADEL application flow.
    Verify negative TCP authentication with the old password is rejected. These
    checks must use secure environment input, never argv or history.
-7. Only after all positive and negative checks pass, remove the old value from the
+8. Only after all positive and negative checks pass, remove the old value from the
    password manager and any secure temporary environment.
 
-If verification fails, rollback is also bounded maintenance: restore the old role
+If verification fails, use the already-prepared and reviewed rollback artifacts
+immediately (no new approval or review inside the outage): restore the old role
 password using the same secure `\getenv` method, restore both external Secrets, and
-increment both revision annotations again in one reviewed GitOps change. Wait for
-PostgreSQL and core readiness, then verify old-password TCP authentication and the
-application flow before retiring the new value. Rollback does not claim uninterrupted
-availability.
+push the prepared rollback revision change for both annotations. Wait for PostgreSQL
+and core readiness, then verify old-password TCP authentication and the application
+flow. Also verify negative TCP authentication with the new password before retiring
+it. Rollback does not claim uninterrupted availability.
 
 ## Monitoring and operator checks
 
