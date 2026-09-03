@@ -58,10 +58,14 @@ The external `config-yaml` still supplies the first human administrator.
 to verify Login V2 JWTs and Login V2 uses the private key to sign them. Create
 and rotate it out of band; the Helm chart must not generate or manage this Secret.
 
-When rotating this key, replace the external Secret with a matching RSA
-certificate/private-key pair, then explicitly restart both the `zitadel-login`
-and `zitadel` Deployments so they reload it. Verify core readiness and a complete
-Login V2 flow before declaring rotation complete.
+When changing either `zitadel-login-service-key` or the external
+`zitadel-runtime-config` Secret, replace it out of band, then increment the
+matching Git-tracked `zitadel.najtanszaplansza.pl/external-secret-revision`
+value in both `podAnnotations` and `login.podAnnotations` in
+`apps/zitadel/values.yaml`. Commit and push the values change through the normal
+GitOps flow; ArgoCD updates both Pod templates, which performs the rollout
+without a manual restart. After ArgoCD reports Synced and Healthy, verify core
+readiness and a complete Login V2 flow before declaring the rotation complete.
 
 ## Network-policy contract
 

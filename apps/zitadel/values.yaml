@@ -59,9 +59,17 @@ extraVolumeMounts:
     mountPath: /system-api
     readOnly: true
 
+podAnnotations:
+  zitadel.najtanszaplansza.pl/external-secret-revision: "1"
+
 login:
   enabled: true
   loginServiceKeySecretName: zitadel-login-service-key
+  customConfigmapConfig: |
+    ZITADEL_LOGINCLIENT_KEYFILE="/login-service-key/tls.key"
+    AUDIENCE="https://${ZITADEL_EXTERNALDOMAIN}"
+    ZITADEL_API_URL="http://zitadel:8080"
+    CUSTOM_REQUEST_HEADERS="Host:${ZITADEL_EXTERNALDOMAIN}"
   replicaCount: 2
   image:
     repository: ghcr.io/zitadel/zitadel-login
@@ -84,6 +92,8 @@ login:
         release: monitoring
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+  podAnnotations:
+    zitadel.najtanszaplansza.pl/external-secret-revision: "1"
   serviceAccount:
     create: false
     name: zitadel-login
