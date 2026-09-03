@@ -78,6 +78,10 @@ is pinned to `app.kubernetes.io/name=prometheus`, instance
 `monitoring-kube-prometheus-prometheus`. Both also retain their
 `kubernetes.io/metadata.name` namespace selectors.
 
+DNS egress from runtime, bootstrap Jobs, and Login V2 combines the
+`kube-system` namespace selector with CoreDNS' live stable
+`k8s-app=kube-dns` pod label and permits only TCP/UDP port 53.
+
 PostgreSQL accepts port 5432 only from the init, setup, and runtime core pods.
 Traefik in `kube-system` reaches core on 8080 and Login V2 on 3000. Prometheus in
 `monitoring` reaches the rendered metrics ports (core 8080 and Login V2 9464).
