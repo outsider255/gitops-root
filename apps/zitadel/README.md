@@ -25,6 +25,45 @@ and the System/Product Login V2 routes unchanged. Prometheus must scrape core me
 directly through the rendered `zitadel` Service and its ServiceMonitor; it must not use
 either public hostname.
 
+## Public routing-header boundary
+
+Before forwarding either public hostname, Traefik removes client-supplied
+`X-Zitadel-Instance-Host`, `X-Zitadel-Public-Host`, and
+`X-Zitadel-Forward-Host` request headers. The Headers middleware uses empty
+`customRequestHeaders` values, which remove the listed headers; it deliberately
+does not change `Host`, so the actual requested hostname remains available to
+ZITADEL. The same sanitizer precedes the metrics-deny middleware as defense in
+depth.
+
+Login V2's `ZITADEL_API_URL=http://zitadel:8080` is a cluster-local Service call,
+not a public Traefik route. It therefore bypasses this edge sanitizer and keeps
+the trusted routing headers synthesized on ZITADEL's internal Login-to-core path.
+
+After both issuer hosts are provisioned, prove the edge boundary without mutation:
+
+```powershell
+$identity = 'https://identity.najtanszaplansza.pl'
+$product = 'https://login.najtanszaplansza.pl'
+
+function Assert-SpoofedIssuer([string] $url, [string] $expectedIssuer, [string] $spoofedHost) {
+  $headers = @{
+    'X-Zitadel-Instance-Host' = $spoofedHost
+    'X-Zitadel-Public-Host' = $spoofedHost
+    'X-Zitadel-Forward-Host' = $spoofedHost
+  }
+  $document = Invoke-RestMethod "$url/.well-known/openid-configuration" -Headers $headers
+  if ($document.issuer -ne $expectedIssuer) {
+    throw "Spoofed routing headers changed $url issuer to $($document.issuer)"
+  }
+}
+
+Assert-SpoofedIssuer $identity $identity 'login.najtanszaplansza.pl'
+Assert-SpoofedIssuer $product $product 'identity.najtanszaplansza.pl'
+```
+
+The first check proves the System host cannot be routed to the product issuer;
+the second proves the product host cannot be routed to the System or another issuer.
+
 Create these Secrets out of band. Secret values and rendered Secret manifests must
 remain outside Git.
 
