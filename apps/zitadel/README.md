@@ -197,15 +197,49 @@ PostgreSQL ingress allow-list and this deny-all egress policy are applied at syn
 wave `-2`, before the StatefulSet at wave `-1`, avoiding an unrestricted first-sync
 window.
 
-For a database credential rotation, first create the new out-of-band Secret values,
-then use an operator PostgreSQL session to rotate the `zitadel` role password and
-verify a TCP login with the new raw password. Update the runtime `config-yaml` DSN
-using the percent-encoded userinfo form, quote the YAML value, and increment the
-Git-tracked PostgreSQL Pod annotation
-`zitadel.najtanszaplansza.pl/external-secret-revision` from its current value of
-`"1"` (or the latest value). ArgoCD then rolls the Pod. Verify both authenticated
-PostgreSQL probes and ZITADEL runtime connectivity with the new credential before
-retiring the old Secret value; never expose either value in Git or command arguments.
+### Bounded database credential rotation
+
+This is bounded maintenance, not a zero-downtime procedure: one `zitadel` role
+cannot accept old and new passwords simultaneously. Do not discard the old value
+until every verification below passes.
+
+1. Generate a new random password and retain both old and new values only in the
+   operator password manager. The PostgreSQL admin password
+   `zitadel-db/POSTGRES_PASSWORD` is unchanged by this procedure.
+2. Prepare the raw new value as `zitadel-db/ZITADEL_PASSWORD`. Prepare the matching
+   runtime `config-yaml` DSN with the password percent-encoded as URI userinfo and
+   the complete DSN YAML-quoted. Keep the raw value unchanged in the Secret.
+3. In a secure operator shell, load the new value from the password manager into an
+   environment variable (never a command argument or shell-history assignment), then
+   run an interactive `psql` session over TCP as the admin and execute:
+
+   ```sql
+   \getenv new_password NEW_PASSWORD
+   ALTER ROLE zitadel PASSWORD :'new_password';
+   ```
+
+   Do not paste the password into SQL, a command line, or shell history.
+4. Replace both external Secrets out of band: `zitadel-db/ZITADEL_PASSWORD` with the
+   raw new value and `zitadel-runtime-config/config-yaml` with the new encoded,
+   YAML-quoted DSN. Do not replace the admin password.
+5. In one reviewed GitOps change, increment both revision annotations: the PostgreSQL
+   Pod template annotation in `postgres.yaml` and core `podAnnotations` in
+   `values.yaml`. Push through the normal Git/ArgoCD flow; do not claim completion
+   from a Git commit alone.
+6. Wait for ArgoCD to report the rollout complete, then wait for the PostgreSQL
+   authenticated startup/readiness probe and core readiness. Verify positive TCP
+   authentication with the new password and a complete ZITADEL application flow.
+   Verify negative TCP authentication with the old password is rejected. These
+   checks must use secure environment input, never argv or history.
+7. Only after all positive and negative checks pass, remove the old value from the
+   password manager and any secure temporary environment.
+
+If verification fails, rollback is also bounded maintenance: restore the old role
+password using the same secure `\getenv` method, restore both external Secrets, and
+increment both revision annotations again in one reviewed GitOps change. Wait for
+PostgreSQL and core readiness, then verify old-password TCP authentication and the
+application flow before retiring the new value. Rollback does not claim uninterrupted
+availability.
 
 ## Monitoring and operator checks
 
