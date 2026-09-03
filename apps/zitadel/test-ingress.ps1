@@ -20,7 +20,7 @@ function Require-Count([string] $Pattern, [int] $Expected, [string] $Description
 
 Require-Match 'name:\s+zitadel-public-request-headers' 'public routing-header middleware'
 foreach ($header in @('X-Zitadel-Instance-Host', 'X-Zitadel-Public-Host', 'X-Zitadel-Forward-Host')) {
-    Require-Match ('(?m)^\s+' + [regex]::Escape($header) + ':\s+""$') "empty removal value for $header"
+    Require-Match ('(?m)^[\t ]+' + [regex]::Escape($header) + ':[\t ]+""[\t ]*\r?$') "empty removal value for $header"
 }
 
 Require-Match 'router\.middlewares:\s+zitadel-zitadel-public-request-headers@kubernetescrd,zitadel-zitadel-rate-limit@kubernetescrd' 'sanitizer before public rate limit'
