@@ -31,6 +31,7 @@ remain outside Git.
 ```text
 zitadel-db
   POSTGRES_PASSWORD
+  ZITADEL_PASSWORD
 
 zitadel-masterkey
   masterkey
@@ -48,6 +49,20 @@ and the first-login password-change requirement. It must not appear in Git.
 
 `zitadel-masterkey/masterkey` must be exactly 32 printable ASCII bytes. Store this
 value in the operator password manager as well; it must not appear in Git.
+
+`zitadel-db/POSTGRES_PASSWORD` is the bootstrap-only PostgreSQL administrator
+password. `zitadel-db/ZITADEL_PASSWORD` is the separate runtime DSN password for
+the non-superuser `zitadel` LOGIN role; both values are created out of band and
+must not appear in Git. On an empty data directory, the repository-owned init
+script creates the `zitadel` database and role idempotently. PostgreSQL's official
+entrypoint runs that script only during first initialization; changing either
+password later requires an operator-managed PostgreSQL role rotation.
+
+The PostgreSQL image is pinned to `postgres:16.14-alpine3.24`, an official
+multi-architecture PostgreSQL 16 Alpine tag. Patch upgrades can change the image
+base and PostgreSQL binaries; review the official image release notes, test
+compatibility, and update this pin deliberately. Existing data directories are
+not reinitialized by the init script.
 
 The System API public-key Secret is also created out of band:
 
