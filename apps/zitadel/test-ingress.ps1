@@ -28,7 +28,7 @@ Require-Count 'name:\s+zitadel-public-request-headers\s*\r?\n\s+- name:\s+zitade
 Require-Count 'PathRegexp\(`\^/debug\(\?:/\|\(\?i:%2f\)\)metrics\(\?:\$\|/\|\(\?i:%2f\)\)`\)' 2 'bounded metrics routes'
 Require-Count 'priority:\s+200' 2 'metrics route priorities'
 
-foreach ($hostName in @('identity.najtanszaplansza.pl', 'login.najtanszaplansza.pl')) {
+foreach ($hostName in @('identity.stocznia.dev', 'login.najtanszaplansza.pl')) {
     Require-Match "host:\s+$([regex]::Escape($hostName))" "ordinary public host $hostName"
     Require-Match ([regex]::Escape(('Host(`' + $hostName + '`)'))) "metrics deny host $hostName"
 }

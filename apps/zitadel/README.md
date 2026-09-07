@@ -9,7 +9,7 @@
 ## Temporary ingress exposure risk (2026-09-03)
 
 There is currently no fixed operator VPN or public CIDR to allow-list. Consequently,
-`identity.najtanszaplansza.pl` is temporarily publicly reachable while it provides the
+`identity.stocznia.dev` is temporarily publicly reachable while it provides the
 neutral ZITADEL System host. No IP allow-list is attached until a stable operator path
 is supplied. `login.najtanszaplansza.pl` is the Planszomat product issuer/login host
 and must remain free of an operator-only allow-list. Revisit this restriction when the
@@ -42,7 +42,7 @@ the trusted routing headers synthesized on ZITADEL's internal Login-to-core path
 After both issuer hosts are provisioned, prove the edge boundary without mutation:
 
 ```powershell
-$identity = 'https://identity.najtanszaplansza.pl'
+$identity = 'https://identity.stocznia.dev'
 $product = 'https://login.najtanszaplansza.pl'
 
 function Assert-SpoofedIssuer([string] $url, [string] $expectedIssuer, [string] $spoofedHost) {
@@ -58,7 +58,7 @@ function Assert-SpoofedIssuer([string] $url, [string] $expectedIssuer, [string] 
 }
 
 Assert-SpoofedIssuer $identity $identity 'login.najtanszaplansza.pl'
-Assert-SpoofedIssuer $product $product 'identity.najtanszaplansza.pl'
+Assert-SpoofedIssuer $product $product 'identity.stocznia.dev'
 ```
 
 The first check proves the System host cannot be routed to the product issuer;
@@ -223,7 +223,7 @@ the child through the UI.
 4. wait for `kubectl -n zitadel rollout status deployment/zitadel` and verify
    exactly two Ready core Pods carry the new system-api-key revision annotation;
 5. create short-lived JWTs with issuer `system-bootstrap` and audience
-   `https://identity.najtanszaplansza.pl`; call the read-only
+   `https://identity.stocznia.dev`; call the read-only
    `POST /system/v1/instances/_search` probe with the new JWT and require success, then
    call it with the old JWT and require HTTP 401 or 403;
 6. clear both JWTs from memory and destroy the old private key only after the
@@ -232,10 +232,10 @@ the child through the UI.
 The probe can be performed without printing either token:
 
 ```powershell
-$probe = 'https://identity.najtanszaplansza.pl/system/v1/instances/_search'
+$probe = 'https://identity.stocznia.dev/system/v1/instances/_search'
 $body = '{"query":{"limit":1}}'
-$newJwt = (& zitadel-tools key2jwt --audience=https://identity.najtanszaplansza.pl --issuer=system-bootstrap --key $newPrivateKeyPath).Trim()
-$oldJwt = (& zitadel-tools key2jwt --audience=https://identity.najtanszaplansza.pl --issuer=system-bootstrap --key $oldPrivateKeyPath).Trim()
+$newJwt = (& zitadel-tools key2jwt --audience=https://identity.stocznia.dev --issuer=system-bootstrap --key $newPrivateKeyPath).Trim()
+$oldJwt = (& zitadel-tools key2jwt --audience=https://identity.stocznia.dev --issuer=system-bootstrap --key $oldPrivateKeyPath).Trim()
 try {
   Invoke-RestMethod $probe -Method Post -ContentType 'application/json' -Body $body -Headers @{ Authorization = "Bearer $newJwt" } | Out-Null
   $oldAccepted = $true
@@ -503,9 +503,9 @@ After ArgoCD reports the application Synced and Healthy, verify without mutation
 ```powershell
 kubectl -n zitadel get pods,jobs,svc,ingress,pvc
 kubectl -n zitadel get certificate
-Invoke-RestMethod https://identity.najtanszaplansza.pl/.well-known/openid-configuration
-Invoke-WebRequest https://identity.najtanszaplansza.pl/debug/ready
-Invoke-WebRequest https://identity.najtanszaplansza.pl/ui/v2/login
+Invoke-RestMethod https://identity.stocznia.dev/.well-known/openid-configuration
+Invoke-WebRequest https://identity.stocznia.dev/debug/ready
+Invoke-WebRequest https://identity.stocznia.dev/ui/v2/login
 ```
 
 Expect one ready PostgreSQL pod, two ready core pods, two ready Login V2 pods,

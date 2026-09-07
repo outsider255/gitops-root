@@ -49,7 +49,7 @@ spec:
     # Explicit priority prevents the ordinary Ingress / Prefix route below from
     # exposing metrics. Match literal and encoded slash separators because the
     # backend decodes %2F; a trailing boundary leaves unrelated /debug/* paths alone.
-    - match: Host(`identity.najtanszaplansza.pl`) && PathRegexp(`^/debug(?:/|(?i:%2f))metrics(?:$|/|(?i:%2f))`)
+    - match: Host(`identity.stocznia.dev`) && PathRegexp(`^/debug(?:/|(?i:%2f))metrics(?:$|/|(?i:%2f))`)
       kind: Rule
       priority: 200
       middlewares:
@@ -97,7 +97,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: identity.najtanszaplansza.pl
+    - host: identity.stocznia.dev
       http:
         paths:
           # Kubernetes ingress matching gives this longer Prefix path precedence over /.
@@ -134,7 +134,7 @@ spec:
                   number: 8080
   tls:
     - hosts:
-        - identity.najtanszaplansza.pl
+        - identity.stocznia.dev
       secretName: zitadel-system-tls
     - hosts:
         - login.najtanszaplansza.pl
