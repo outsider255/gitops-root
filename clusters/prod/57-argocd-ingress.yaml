@@ -1,0 +1,27 @@
+# ArgoCD managing its own Ingress and server parameters — not its own installation. The
+# install stays hand-applied and out of git (the bootstrap chicken-and-egg); what lands
+# here is only the public surface, which is the part that was drifting.
+#
+# If a bad sync ever breaks the UI, the recovery path is unaffected: every runbook step
+# already drives ArgoCD over `ssh <target> "sudo k3s kubectl -n argocd ..."`, and the
+# Application can be repaired from there.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  source:
+    repoURL: https://github.com/outsider255/gitops-root.git
+    targetRevision: main
+    path: apps/argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

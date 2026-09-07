@@ -1,0 +1,30 @@
+# The live ConfigMap held exactly three keys:
+#
+#   server.basehref: /argocd
+#   server.insecure: "true"
+#   server.rootpath: /argocd
+#
+# basehref and rootpath are what made the UI work under a path prefix. On its own hostname
+# they are wrong — rootpath rewrites every route under /argocd, so leaving them set serves
+# a UI whose links all point at a path that no longer exists. They are removed here rather
+# than set to "/": absent means ArgoCD's own defaults, which is what a root-mounted server
+# wants. The Application prunes them on sync.
+#
+# server.insecure stays true. Traefik terminates TLS; the backend speaks HTTP on port 80.
+#
+# argocd-server reads these as startup parameters, so the ConfigMap change alone does
+# nothing until the Deployment restarts — see README.md.
+#
+# NOT adopted here: argocd-cm. It carries the full resource.customizations and
+# resource.exclusions blocks, and a partial declaration of it would prune them. Its `url`
+# key belongs with the OIDC work in stage two, where both land together.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cmd-params-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  server.insecure: "true"

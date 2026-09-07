@@ -1,0 +1,41 @@
+# Adopted from a hand-applied Ingress that had been live and untracked since 2026-06-22
+# (it still carried kubectl.kubernetes.io/last-applied-configuration). Same name and
+# namespace as the original, so ArgoCD takes ownership of the existing object rather than
+# creating a second one alongside it.
+#
+# It previously served the UI at ns3098488.ip-54-36-172.eu/argocd — the box's OVH
+# reverse-DNS name, shared by path prefix with aurastream v1, aurastream2 and Grafana.
+# Four certificates for that one hostname existed at once, one per namespace, against a
+# Let's Encrypt duplicate limit of five per week.
+#
+# secretName is deliberately unchanged: the cert-manager ingress-shim then updates the
+# existing Certificate in place for the new dnsName, rather than issuing a second one and
+# orphaning the old.
+#
+# argocd-server runs with server.insecure=true (see server-params.yaml), so Traefik
+# terminates TLS and speaks plain HTTP to port 80 on the backend.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: argocd.stocznia.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - argocd.stocznia.dev
+      secretName: argocd-tls
