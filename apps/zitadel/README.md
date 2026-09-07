@@ -83,8 +83,24 @@ zitadel-login-service-key
   tls.key
 ```
 
-`config-yaml` contains the PostgreSQL DSN, the first-instance human administrator,
-and the first-login password-change requirement. It must not appear in Git. For
+`bootstrap-secrets.ps1` creates all five, plus `zitadel-system-api-public` below.
+Every value is generated — none is fetched from a third-party dashboard — so the
+command runs unattended:
+
+```powershell
+pwsh apps/zitadel/bootstrap-secrets.ps1
+```
+
+It creates only what is missing and writes nothing on a second run, so it is safe to
+re-run after a partial failure. Values are piped to `kubectl create` on stdin: never an
+argument (so never in a shell history or process list), never a file on the node, never
+committed. It writes one file, the escrow bundle — masterkey, System API private key,
+first-admin credentials, database passwords — for the operator password manager; move
+those values across and delete the file. There is no off-node database backup, so that
+bundle is the only copy of the masterkey outside the cluster.
+
+`config-yaml` contains the PostgreSQL connection settings, the first-instance human
+administrator, and the first-login password-change requirement. It must not appear in Git. For
 the initial empty-database install it must explicitly set
 `FirstInstance.Skip: false`; the Git-tracked config sets the same value. The
 chart passes its ConfigMap first and this external file second, so a later
@@ -103,12 +119,19 @@ database idempotently. PostgreSQL's official entrypoint runs that script only
 during first initialization; changing either password later requires an
 operator-managed PostgreSQL role rotation.
 
-The provisioning wizard must put the raw `ZITADEL_PASSWORD` in the Kubernetes
-Secret and PostgreSQL init environment unchanged. When constructing the ZITADEL
-runtime PostgreSQL DSN, percent-encode the password as URI userinfo (for example,
-raw `p@ss:word#1` becomes `p%40ss%3Aword%231`) and YAML-quote the complete DSN.
-Do not percent-encode the Kubernetes Secret value itself, and do not place a raw
-password containing `:`, `@`, `#`, `%`, `?`, or `/` unquoted in YAML.
+`config-yaml` uses ZITADEL's structured `Database.postgres` fields — `User` for the
+runtime `zitadel` role and `Admin` for the bootstrap `postgres` superuser with
+`ExistingDatabase: postgres` — not the single-string `DSN` field. Both are supported,
+but setting `DSN` makes ZITADEL ignore every individual field including `Admin`, which
+would leave `zitadel init` connecting as a `NOCREATEDB` role. The structured form also
+removes URI escaping from the picture: a password appears as a YAML-quoted scalar and
+is never parsed as userinfo. The same raw `ZITADEL_PASSWORD` goes unchanged into the
+Kubernetes Secret, the PostgreSQL init environment, and `config-yaml`.
+
+`bootstrap-secrets.ps1` generates both database passwords from letters and digits only,
+so no escaping question arises for the values it creates. A hand-made password that
+contains `:`, `@`, `#`, `%`, `?`, or `/` is still safe in the structured form provided
+it is YAML-quoted, but keep to the generated alphabet.
 
 The PostgreSQL image is pinned to the official multi-architecture image
 `postgres:16.15-alpine3.24@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685`.
