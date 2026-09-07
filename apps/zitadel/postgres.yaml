@@ -147,6 +147,9 @@ spec:
       spec:
         storageClassName: local-path
         accessModes: [ReadWriteOnce]
+        # Declared rather than defaulted: the API server writes it into the live
+        # template, and an undeclared field is a permanent ArgoCD diff.
+        volumeMode: Filesystem
         resources:
           requests:
             storage: 10Gi

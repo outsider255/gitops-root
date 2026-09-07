@@ -24,6 +24,19 @@ spec:
       path: apps/zitadel
       directory:
         exclude: values.yaml
+  # The API server stamps apiVersion, kind and status into each live
+  # volumeClaimTemplate. They are not expressible in the desired manifest, so
+  # without this the Application is permanently OutOfSync and the status stops
+  # being a usable drift signal.
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      name: zitadel-postgres
+      namespace: zitadel
+      jsonPointers:
+        - /spec/volumeClaimTemplates/0/apiVersion
+        - /spec/volumeClaimTemplates/0/kind
+        - /spec/volumeClaimTemplates/0/status
   syncPolicy:
     automated:
       prune: false
