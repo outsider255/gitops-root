@@ -1,23 +1,31 @@
-# The live ConfigMap held exactly three keys:
+# The live ConfigMap held three keys, set when the UI was mounted under a path prefix:
 #
 #   server.basehref: /argocd
 #   server.insecure: "true"
 #   server.rootpath: /argocd
 #
-# basehref and rootpath are what made the UI work under a path prefix. On its own hostname
-# they are wrong — rootpath rewrites every route under /argocd, so leaving them set serves
-# a UI whose links all point at a path that no longer exists. They are removed here rather
-# than set to "/": absent means ArgoCD's own defaults, which is what a root-mounted server
-# wants. The Application prunes them on sync.
+# basehref and rootpath are what made that prefix work. On a dedicated hostname they are
+# wrong — rootpath rewrites every route under /argocd, so leaving them set serves a UI at
+# argocd.stocznia.dev whose links all point at a path that no longer exists, and the root
+# itself 404s.
 #
-# server.insecure stays true. Traefik terminates TLS; the backend speaks HTTP on port 80.
+# All three are declared EXPLICITLY rather than removing the two that no longer apply.
+# Removal was tried first and does not work here: the object carries a `kubectl-patch`
+# field manager alongside `kubectl`, and ArgoCD's three-way merge left both keys in place
+# while still reporting the resource Synced — the desired state silently did not win.
+# Declaring the values makes the apply deterministic and independent of merge semantics.
 #
-# argocd-server reads these as startup parameters, so the ConfigMap change alone does
-# nothing until the Deployment restarts — see README.md.
+# An empty rootpath and a basehref of "/" are ArgoCD's own defaults for a server mounted
+# at the root of its host.
+#
+# server.insecure stays true: Traefik terminates TLS and speaks HTTP to port 80.
+#
+# argocd-server reads all of these as startup parameters, so a sync alone changes nothing
+# until the Deployment restarts — see README.md.
 #
 # NOT adopted here: argocd-cm. It carries the full resource.customizations and
-# resource.exclusions blocks, and a partial declaration of it would prune them. Its `url`
-# key belongs with the OIDC work in stage two, where both land together.
+# resource.exclusions blocks, and a partial declaration would prune them. Its `url` key
+# belongs with the OIDC work in stage two, where both land together.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -28,3 +36,5 @@ metadata:
     app.kubernetes.io/part-of: argocd
 data:
   server.insecure: "true"
+  server.basehref: "/"
+  server.rootpath: ""
