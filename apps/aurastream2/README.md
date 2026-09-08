@@ -73,7 +73,11 @@ hostname serves v2 in earnest:
 - The **Data Protection key ring persists unencrypted** in the database, protecting the encrypted
   credential columns with an unencrypted key.
 - **Authentication is the only authorization** — the Api's fallback policy is
-  `RequireAuthenticatedUser` and nothing narrows it, so **any user who can sign in to the ZITADEL
-  Internal Tools instance is a full operator**, including the Hangfire dashboard and every stored
-  credential. ZITADEL's "Only authorized users can authenticate" project setting is the control
-  that would fix this; ArgoCD shares that project, so grant roles before ticking it.
+  `RequireAuthenticatedUser` and nothing narrows it, so **any user who can sign in is a full
+  operator**, including the Hangfire dashboard and every stored credential.
+
+  Since 2026-09-08 the gate is at ZITADEL instead: the Internal Tools project has **"Only
+  authorized users can authenticate"** on, so signing in requires an explicit assignment of the
+  project's `operator` role. **A new user gets no access until someone grants them that role**, and
+  because ArgoCD lives in the same project, the grant admits them to ArgoCD too. That is the whole
+  access model — there is still nothing finer-grained inside the app.
