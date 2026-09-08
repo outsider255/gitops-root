@@ -83,29 +83,6 @@ spec:
   tls:
     secretName: zitadel-planszomat-tls
 ---
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: zitadel-internal-public-metrics-deny
-  namespace: zitadel
-spec:
-  entryPoints:
-    - websecure
-  routes:
-    # Same boundary the System and product hosts get: metrics are denied at the edge
-    # before the core Service is contacted, matching literal and encoded separators.
-    - match: Host(`sso.stocznia.dev`) && PathRegexp(`^/debug(?:/|(?i:%2f))metrics(?:$|/|(?i:%2f))`)
-      kind: Rule
-      priority: 200
-      middlewares:
-        - name: zitadel-public-request-headers
-        - name: zitadel-public-metrics-deny
-      services:
-        - name: zitadel
-          port: 8080
-  tls:
-    secretName: zitadel-internal-tls
----
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -155,25 +132,6 @@ spec:
                 name: zitadel
                 port:
                   number: 8080
-    # Internal-tools instance: ArgoCD and Grafana authenticate here, never against the
-    # System host, which stays operational and IP-restrictable per the platform design.
-    - host: sso.stocznia.dev
-      http:
-        paths:
-          - path: /ui/v2/login
-            pathType: Prefix
-            backend:
-              service:
-                name: zitadel-login
-                port:
-                  number: 3000
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: zitadel
-                port:
-                  number: 8080
   tls:
     - hosts:
         - identity.stocznia.dev
@@ -181,6 +139,3 @@ spec:
     - hosts:
         - login.najtanszaplansza.pl
       secretName: zitadel-planszomat-tls
-    - hosts:
-        - sso.stocznia.dev
-      secretName: zitadel-internal-tls
