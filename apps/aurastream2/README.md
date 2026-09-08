@@ -9,27 +9,36 @@ The reasoning behind each one (why the media PVC is RWO, why the streamer is `re
 `Recreate`, why the Api limit is 4Gi, the full config/secret inventory) lives in that repo's
 `deploy/README.md` and in the comments here — those are not repeated.
 
-## How v2 shares v1's hostname
+## v2's own hostname (and the prefix route it replaced)
 
-Both are served from `ns3098488.ip-54-36-172.eu`. v1 owns everything; v2 owns `/aurastream2`.
+v2 is served from `aurastream.stocznia.dev`, at the root, with its own certificate:
 
 ```
-browser  https://ns3098488.ip-54-36-172.eu/aurastream2/api/health
-Traefik  Host(...) && PathPrefix(`/aurastream2`)  priority 100  → strip /aurastream2 → aurastream2-web
-nginx    /api/health                                            → aurastream2-api:80
+browser  https://aurastream.stocznia.dev/api/health
+Traefik  Host(`aurastream.stocznia.dev`)  → aurastream2-web
+nginx    /api/health                      → aurastream2-api:80
 ```
 
-Three things must agree, or the console breaks in ways that look unrelated:
+Until this move, v2 shared v1's hostname `ns3098488.ip-54-36-172.eu` and owned `/aurastream2`
+there, with Traefik stripping the prefix. **That route is still live**, deliberately: media URLs
+Buffer already holds carry the old base. Both routes serve the same `aurastream2-web` Service, so
+the old one keeps working for media even though the console it serves now asks for assets at the
+root and will not render there.
+
+Retire the old route — the `PathPrefix` IngressRoute and the `strip-aurastream2` Middleware,
+together — at least 24 hours after `Publish__PublicMediaBaseUrl` changed to the new host, once no
+scheduled post still points at the old base.
+
+Two things must agree, or the console breaks in ways that look unrelated:
 
 | Piece | Value | Set in |
 |---|---|---|
-| Traefik strips | `/aurastream2` | `ingressroute.yaml` |
-| SPA asset base | `/aurastream2/` | `VITE_BASE_PATH` build arg (CI) |
-| Router basename | `/aurastream2/` | read from the same build via `import.meta.env.BASE_URL` |
+| SPA asset base | `/` | `VITE_BASE_PATH` build arg (CI) |
+| Router basename | `/` | read from the same build via `import.meta.env.BASE_URL` |
 
-`Publish__PublicMediaBaseUrl` (`configmap.yaml`) also carries the `/aurastream2` prefix, because Buffer
-fetches published media **by URL from the public internet** — dropping the prefix there yields links
-that 404 for Buffer while working fine inside the cluster.
+`Publish__PublicMediaBaseUrl` (`configmap.yaml`) is a third, independent value: Buffer fetches
+published media **by URL from the public internet**, so it must be a host that resolves from
+Buffer's servers, not a cluster-internal name.
 
 ## Cluster-side prerequisites
 
@@ -38,18 +47,23 @@ image tags are CI-managed (aurastream2's `bump-gitops` job). What cannot live in
 
 1. **`aurastream2-secrets`** — from `deploy/secrets.example.yaml`. The Gemini/Veo/Suno keys are
    **boot-required**: without them the Api CrashLoopBackOffs rather than failing later on first
-   use. (`Supabase__JwtSecret` is optional — prod JWT validation uses Supabase's OIDC JWKS via
-   `Supabase__Issuer`.)
+   use. No JWT secret is needed: prod validates tokens against ZITADEL's JWKS, discovered from
+   `Oidc__Issuer`.
 2. **`ghcr-pull`** — GHCR packages are private and pull secrets are namespaced, so v1's copy is not
    visible here.
-3. **`Supabase__Issuer`** in `configmap.yaml` — still `REPLACE_WITH_SUPABASE_ISSUER_URL`.
+3. **The ZITADEL application** — `Oidc__Audience` in `configmap.yaml` is its client ID. It is a
+   PKCE public client (no secret), and two of its non-default settings are load-bearing: **Auth
+   Token Type must be JWT** (ZITADEL issues opaque tokens otherwise, which the Api cannot
+   validate) and **"Include user's profile info in the ID Token"** must be on (or the token
+   carries no `email` claim).
 
-CI's web build also needs the repo variables `VITE_BASE_PATH=/aurastream2/`, `VITE_API_URL`,
-`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` — Vite inlines them at build time, so a missing one
-produces a silently misconfigured image rather than a build failure.
+CI's web build also needs the repo variables `VITE_BASE_PATH=/`, `VITE_OIDC_AUTHORITY` and
+`VITE_OIDC_CLIENT_ID` — Vite inlines them at build time, so a missing one produces a silently
+misconfigured image rather than a build failure. `VITE_API_URL` is deliberately unset: the console
+calls the Api at a same-origin relative path.
 
-Register `https://ns3098488.ip-54-36-172.eu/aurastream2/api/youtube/callback` as a redirect URI on
-the Google OAuth client before connecting a channel, or the connect popup fails at the callback.
+Register `https://aurastream.stocznia.dev/api/youtube/callback` as a redirect URI on the Google
+OAuth client before connecting a channel, or the connect popup fails at the callback.
 
 ## Known gaps carried from the aurastream2 repo
 
@@ -58,5 +72,8 @@ hostname serves v2 in earnest:
 
 - The **Data Protection key ring persists unencrypted** in the database, protecting the encrypted
   credential columns with an unencrypted key.
-- **Supabase signups have no allowlist** — any authenticated user is a full operator, including the
-  Hangfire dashboard and every stored credential.
+- **Authentication is the only authorization** — the Api's fallback policy is
+  `RequireAuthenticatedUser` and nothing narrows it, so **any user who can sign in to the ZITADEL
+  Internal Tools instance is a full operator**, including the Hangfire dashboard and every stored
+  credential. ZITADEL's "Only authorized users can authenticate" project setting is the control
+  that would fix this; ArgoCD shares that project, so grant roles before ticking it.

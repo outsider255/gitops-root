@@ -31,15 +31,26 @@ data:
   # Baked into the Api image (yt-dlp binary installed here). Only the Api uses it.
   YtDlp__BinaryPath: "/usr/local/bin/yt-dlp"
 
-  # v2 shares v1's hostname and is path-split under /aurastream2 (see ingressroute.yaml). Buffer
-  # fetches media BY URL from this base + /pub-media/... (PublicMediaLink), so it must resolve
-  # from Buffer's servers — the /aurastream2 prefix is part of the public URL and must not be
-  # dropped here.
-  Publish__PublicMediaBaseUrl: "https://ns3098488.ip-54-36-172.eu/aurastream2"
+  # Buffer fetches published media BY URL from this base + /pub-media/... (PublicMediaLink), so it
+  # must resolve from Buffer's servers, not just from inside the cluster.
+  #
+  # v2 now serves on its own host and the old path-split route under
+  # https://ns3098488.ip-54-36-172.eu/aurastream2 is kept alive alongside it (see
+  # ingressroute.yaml). Links Buffer already holds carry the OLD base, so that route must outlive
+  # every scheduled post still pointing at it — leave it in place for at least 24 hours after this
+  # value changed, then delete the PathPrefix route and the strip-aurastream2 middleware together.
+  Publish__PublicMediaBaseUrl: "https://aurastream.stocznia.dev"
 
-  # Not secret (an issuer URL, e.g. https://<project>.supabase.co/auth/v1) — the matching
-  # Supabase__JwtSecret is a real secret and lives in the Secret instead.
-  Supabase__Issuer: "https://jsjgoxymjrcsagsvvrdy.supabase.co/auth/v1"
+  # OIDC issuer for the console's users — ZITADEL's Internal Tools instance. The Api validates
+  # tokens against this issuer's JWKS (fetched from {issuer}/.well-known/openid-configuration),
+  # so no shared secret is involved: Oidc__JwtSecret exists only in the Testing/Smoke
+  # appsettings, where a symmetric key signs locally minted test tokens.
+  Oidc__Issuer: "https://identity.stocznia.dev"
+
+  # ZITADEL puts the client ID in the access token's `aud` array, so the console's own client ID
+  # is what the Api must accept. Same value as CI's VITE_OIDC_CLIENT_ID repo variable — an
+  # application registered in ZITADEL as a PKCE public client, which is why it has no secret.
+  Oidc__Audience: "389861331303465068"
 
   # Defaults already match the code's own defaults (StreamOptions.MinimumPoolTracks = 40,
   # AnalyticsOptions.PerformanceWindowDays = 90) — set explicitly so the deployed value is

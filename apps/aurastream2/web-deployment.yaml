@@ -44,9 +44,9 @@ spec:
       containers:
         - name: web
           # TAG IS A PLACEHOLDER until aurastream2's main is pushed and CI publishes an image.
-          # The console's API base URL and Supabase project are INLINED AT BUILD TIME by Vite,
-          # so this image is bound to the values CI passed as build args — changing them means a
-          # rebuild, not an env edit here.
+          # The console's asset base path and OIDC authority/client ID are INLINED AT BUILD TIME
+          # by Vite, so this image is bound to the values CI passed as build args — changing them
+          # means a rebuild, not an env edit here.
           image: ghcr.io/outsider255/aurastream2-web:3308020cfd99ab7049df5136c6f6294f39aa7f79
           ports:
             - containerPort: 80
