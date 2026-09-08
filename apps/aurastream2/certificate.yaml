@@ -19,3 +19,23 @@ spec:
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
+---
+# The console's own hostname, added 2026-09-08 with the ZITADEL auth migration. Separate from the
+# certificate above because Traefik's IngressRoute carries a single `spec.tls`, so a second host
+# with its own certificate needs its own IngressRoute and its own Secret.
+#
+# The old rDNS certificate above is NOT retired here. It still terminates TLS for the
+# /aurastream2 prefix route, which has to outlive the console's move by at least 24 hours —
+# published media links are minted against that host and Buffer fetches them for 24 hours.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: aurastream2-stocznia-tls
+  namespace: aurastream2
+spec:
+  secretName: aurastream2-stocznia-tls
+  dnsNames:
+    - aurastream.stocznia.dev
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
