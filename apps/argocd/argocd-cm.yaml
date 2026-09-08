@@ -20,7 +20,7 @@ data:
   oidc.config: |
     name: ZITADEL
     issuer: https://identity.stocznia.dev
-    clientID: 389825001349447788
+    clientID: "389825001349447788"
     clientSecret: $oidc.zitadel.clientSecret
     requestedScopes:
       - openid

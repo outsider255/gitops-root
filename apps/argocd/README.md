@@ -84,3 +84,15 @@ what ArgoCD looks for otherwise.
 Local admin stays enabled: it is the way back in if OIDC breaks. Disabling it
 (`admin.enabled: "false"` in `argocd-cm`) is worth doing only once a second person can log
 in via SSO, so a single lost account cannot lock everyone out of the control plane.
+
+### Quote the client ID
+
+ZITADEL client IDs are all digits. `oidc.config` is a YAML block scalar that ArgoCD parses
+itself, so an unquoted ID becomes a *number* and the server rejects the whole block:
+
+```
+invalid oidc config: cannot unmarshal number into Go struct field OIDCConfig.clientID of type string
+```
+
+This is a `warning`, not an error, and the server starts anyway — with `sso: false` in its
+startup line and no login button. That log line is the only symptom.
