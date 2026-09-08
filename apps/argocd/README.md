@@ -36,15 +36,51 @@ Until that runs, `argocd.stocznia.dev` answers with a UI whose links still point
 `/argocd`. Both `/argocd` on the old host and the new host are unreachable in between —
 short, and SSH is unaffected.
 
-## Stage two: SSO
+## SSO
 
-`argocd-cm` currently has **no `oidc.config`**. Local admin is the only credential.
+ArgoCD is ZITADEL's first OIDC client. The application lives in project **Internal Tools**
+on the first instance, `identity.stocznia.dev` — not on a dedicated internal-tools instance
+as the platform design proposes, because creating a virtual instance needs the System API
+and the operator-held signing key. Moving it later is re-registering one OIDC client.
 
-Once the ZITADEL instance at `identity.stocznia.dev` is provisioned, ArgoCD becomes its
-first OIDC client: add `oidc.config` and `url: https://argocd.stocznia.dev` to `argocd-cm`,
-then disable the local admin. ArgoCD is a better first client than Planszomat — no user
-migration, small blast radius, and it retires a password-only public admin panel.
+`argocd-cm` **is** adopted here now. Its nine `resource.customizations` /
+`resource.exclusions` keys are verbatim from the upstream install manifest and were checked
+byte-for-byte against the live ConfigMap before adoption, so the only change is `url` and
+`oidc.config`. The cost is that those defaults no longer move on an ArgoCD upgrade —
+re-diff them against upstream when upgrading.
 
-`argocd-cm` is not adopted here on purpose. It carries the whole `resource.customizations`
-and `resource.exclusions` set, and a partial declaration would prune it. Both keys land
-together in stage two.
+### The client secret
+
+It is not in this repo, and `oidc.config` refers to it as `$oidc.zitadel.clientSecret`,
+which ArgoCD resolves from Secret `argocd-secret`. Create it out of band, piped over stdin
+so it is never a process argument or a shell-history line on the node:
+
+```
+$body = '{"stringData":{"oidc.zitadel.clientSecret":"<secret>"}}'
+$body | ssh ubuntu@ns3098488.ip-54-36-172.eu `
+  "sudo k3s kubectl -n argocd patch secret argocd-secret --type merge --patch-file /dev/stdin"
+```
+
+ZITADEL shows the secret exactly once, at application creation. If it is lost, regenerate
+it in the console and re-run the patch — the client ID does not change.
+
+### Ordering
+
+The Secret must exist before `argocd-server` restarts, or the server starts with an empty
+client secret and every login fails at the token exchange. Then:
+
+```
+ssh ubuntu@ns3098488.ip-54-36-172.eu \
+  "sudo k3s kubectl -n argocd rollout restart deploy/argocd-server"
+```
+
+### RBAC
+
+`argocd-rbac-cm` was empty, which is not "everyone is an admin" — it is the opposite. A
+user who authenticates with no matching policy sees an empty UI and no error. It now
+matches on the `email` claim, because ZITADEL's default claim set has no `groups`, which is
+what ArgoCD looks for otherwise.
+
+Local admin stays enabled: it is the way back in if OIDC breaks. Disabling it
+(`admin.enabled: "false"` in `argocd-cm`) is worth doing only once a second person can log
+in via SSO, so a single lost account cannot lock everyone out of the control plane.
