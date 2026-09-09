@@ -1,0 +1,20 @@
+{
+  "instances": [
+    {
+      "key": "planszomat",
+      "name": "Planszomat",
+      "firstOrganization": "Planszomat",
+      "defaultLanguage": "pl",
+      "domainEnvironmentVariable": "ZITADEL_DOMAIN_PLANSZOMAT",
+      "ownerEnvironmentPrefix": "ZITADEL_OWNER_PLANSZOMAT"
+    },
+    {
+      "key": "aurastream",
+      "name": "Aurastream",
+      "firstOrganization": "Aurastream",
+      "defaultLanguage": "en",
+      "domainEnvironmentVariable": "ZITADEL_DOMAIN_AURASTREAM",
+      "ownerEnvironmentPrefix": "ZITADEL_OWNER_AURASTREAM"
+    }
+  ]
+}
