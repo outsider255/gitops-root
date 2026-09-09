@@ -134,6 +134,21 @@ public sealed class ZitadelSystemClientTests
         Assert.DoesNotContain("system-jwt", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task EnsureInstanceAsync_discards_a_non_numeric_api_code()
+    {
+        var handler = new RecordingHandler("""{ "code": "owner-password-from-environment-and-bearer-token", "message": "denied" }""") { StatusCode = HttpStatusCode.Forbidden };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://identity.example.test") };
+        var client = new ZitadelSystemClient(http, "system-jwt");
+
+        var exception = await Assert.ThrowsAsync<ZitadelSystemApiException>(() =>
+            client.EnsureInstanceAsync(Spec(), Owner(), CancellationToken.None));
+
+        Assert.Null(exception.ApiCode);
+        Assert.DoesNotContain("owner-password", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("token", exception.Message, StringComparison.Ordinal);
+    }
+
     private static ProductInstanceSpec Spec() => new(
         "planszomat", "Planszomat", "Planszomat", "pl", "login.najtanszaplansza.pl", "ZITADEL_OWNER_PLANSZOMAT");
 

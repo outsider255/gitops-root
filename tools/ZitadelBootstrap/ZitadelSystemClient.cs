@@ -150,9 +150,11 @@ public sealed class ZitadelSystemClient
         try
         {
             using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-            if (document.RootElement.TryGetProperty("code", out var codeValue))
+            if (document.RootElement.TryGetProperty("code", out var codeValue) &&
+                codeValue.ValueKind == JsonValueKind.Number &&
+                codeValue.TryGetInt32(out var numericCode))
             {
-                code = codeValue.ToString();
+                code = numericCode.ToString(System.Globalization.CultureInfo.InvariantCulture);
             }
 
         }
