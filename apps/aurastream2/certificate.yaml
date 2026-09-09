@@ -1,32 +1,14 @@
-# A second certificate for the SAME hostname v1 already holds.
+# The console's own hostname, added 2026-09-08 with the ZITADEL auth migration.
 #
-# This is not redundancy for its own sake: Kubernetes Secrets do not cross namespaces, so v2's
-# IngressRoute cannot reference v1's `aurastream-tls` in the `aurastream` namespace. cert-manager
-# issues an independent certificate for the same dnsName into this namespace instead.
+# Until 2026-09-09 this file also held `aurastream2-tls`, a second certificate for v1's hostname
+# (ns3098488.ip-54-36-172.eu) issued into this namespace because Kubernetes Secrets do not cross
+# namespaces. It existed only to terminate TLS for the /aurastream2 prefix route, and both were
+# retired together once every media link minted against that host had expired — PublicMediaLink
+# gives each token a 24-hour lifetime, so none outlives a day. v1 holds its own certificate in
+# its own namespace and is untouched.
 #
-# Let's Encrypt permits this — duplicate certificates for an identical name set are capped at 5
-# per week, and this is issued once and then renewed on cert-manager's own schedule. The HTTP-01
-# challenge is solved by the same ClusterIssuer that already works for v1 on this cluster.
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: aurastream2-tls
-  namespace: aurastream2
-spec:
-  secretName: aurastream2-tls
-  dnsNames:
-    - ns3098488.ip-54-36-172.eu
-  issuerRef:
-    name: letsencrypt-prod
-    kind: ClusterIssuer
----
-# The console's own hostname, added 2026-09-08 with the ZITADEL auth migration. Separate from the
-# certificate above because Traefik's IngressRoute carries a single `spec.tls`, so a second host
-# with its own certificate needs its own IngressRoute and its own Secret.
-#
-# The old rDNS certificate above is NOT retired here. It still terminates TLS for the
-# /aurastream2 prefix route, which has to outlive the console's move by at least 24 hours —
-# published media links are minted against that host and Buffer fetches them for 24 hours.
+# Traefik's IngressRoute carries a single `spec.tls`, so a host with its own certificate needs
+# its own IngressRoute and its own Secret — see ingressroute.yaml.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:

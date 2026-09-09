@@ -34,11 +34,9 @@ data:
   # Buffer fetches published media BY URL from this base + /pub-media/... (PublicMediaLink), so it
   # must resolve from Buffer's servers, not just from inside the cluster.
   #
-  # v2 now serves on its own host and the old path-split route under
-  # https://ns3098488.ip-54-36-172.eu/aurastream2 is kept alive alongside it (see
-  # ingressroute.yaml). Links Buffer already holds carry the OLD base, so that route must outlive
-  # every scheduled post still pointing at it — leave it in place for at least 24 hours after this
-  # value changed, then delete the PathPrefix route and the strip-aurastream2 middleware together.
+  # v2 serves on its own host. The old path-split route under v1's hostname was retired on
+  # 2026-09-09, once every link minted against the old base had expired: PublicMediaLink gives
+  # each token TimeSpan.FromHours(24), so no published link outlives a day.
   Publish__PublicMediaBaseUrl: "https://aurastream.stocznia.dev"
 
   # OIDC issuer for the console's users — ZITADEL's Internal Tools instance. The Api validates

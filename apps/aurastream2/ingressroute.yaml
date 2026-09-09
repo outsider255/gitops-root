@@ -1,63 +1,18 @@
-# v2 shares v1's hostname and is path-split under /aurastream2 — the prefix the web image is
-# actually built with (CI repo var VITE_BASE_PATH=/aurastream2/) and the one registered as the
-# Google OAuth redirect URI. Routing MUST match that build: when this briefly said /v2, the SPA
-# shell loaded but its /aurastream2/assets/* requests fell through to v1's route and came back as
-# v1's index.html — a blank page with no error anywhere but the browser console.
+# The console's own hostname, served at the ROOT.
 #
-# WHY THIS DOES NOT DISTURB v1: Traefik ranks competing rules by priority, and when none is set
-# it derives one from the rule's length — so v2's `Host(...) && PathPrefix(/aurastream2)` would
-# already outrank v1's bare `Host(...)` for /aurastream2/* while leaving every other path on v1.
-# Both priorities are set EXPLICITLY below rather than relying on that derivation, because the
-# failure mode if it ever changed is v1 swallowing v2's traffic (or worse, the reverse) with no
-# error anywhere. v1's own IngressRoute (apps/aurastream/ingressroute.yaml) sets no priority and
-# is left untouched; its derived priority is far below 100.
+# Until 2026-09-09 v2 also answered on v1's hostname under a /aurastream2 PathPrefix, with a
+# StripPrefix middleware, because the web image was built with VITE_BASE_PATH=/aurastream2/ and
+# Buffer held media URLs on that base. Both are now gone: the image is built with
+# VITE_BASE_PATH=/, and every media link minted against the old base has expired on its own —
+# PublicMediaLink protects each token with TimeSpan.FromHours(24), so no link outlives a day
+# whatever the routing says. v1 (apps/aurastream) is untouched and owns its hostname alone again.
 #
-# The StripPrefix middleware removes /aurastream2 before the request reaches nginx, so the
-# container sees /api/..., /pub-media/..., /assets/... — the same paths it would see if it owned
-# the host. The browser still sees /aurastream2/... because the SPA is BUILT with
-# base=/aurastream2/ and the router runs with basename=/aurastream2. Those two must stay in step
-# with the prefix here: change one and deep links or asset URLs break.
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: strip-aurastream2
-  namespace: aurastream2
-spec:
-  stripPrefix:
-    prefixes:
-      - /aurastream2
----
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: aurastream2
-  namespace: aurastream2
-spec:
-  entryPoints:
-    - websecure
-  routes:
-    - match: Host(`ns3098488.ip-54-36-172.eu`) && PathPrefix(`/aurastream2`)
-      kind: Rule
-      priority: 100
-      middlewares:
-        - name: strip-aurastream2
-      services:
-        - name: aurastream2-web
-          port: 80
-  tls:
-    # Reuses the certificate cert-manager already issues for this host in the aurastream
-    # namespace. Kubernetes Secrets do not cross namespaces, so this references v2's own copy —
-    # see the note in clusters/prod/53-aurastream2.yaml about replicating `aurastream-tls` into
-    # this namespace (or issuing a second Certificate for the same dnsName).
-    secretName: aurastream2-tls
----
-# The console's own hostname. Served at the ROOT — no StripPrefix — which is why it needs a
-# separate IngressRoute rather than another route on the one above: `spec.tls` is per-object.
+# Three things must agree, or the console breaks in ways that look unrelated: what Traefik
+# serves (here), the SPA's asset base (CI repo var VITE_BASE_PATH), and the router basename
+# (read from the same build via import.meta.env.BASE_URL). All three are now "/".
 #
-# Until the web image is rebuilt with VITE_BASE_PATH=/, this host will NOT render the console.
-# The deployed image has /aurastream2/ inlined, so its index.html asks for /aurastream2/assets/…,
-# which matches no nginx location at the root and falls through try_files to index.html. That is
-# expected: bringing this up early proves DNS, TLS and routing, nothing more.
+# `spec.tls` is per-object, which is why this host has its own IngressRoute and its own
+# certificate rather than another route on a shared one.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:

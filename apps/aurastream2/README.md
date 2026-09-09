@@ -19,15 +19,13 @@ Traefik  Host(`aurastream.stocznia.dev`)  → aurastream2-web
 nginx    /api/health                      → aurastream2-api:80
 ```
 
-Until this move, v2 shared v1's hostname `ns3098488.ip-54-36-172.eu` and owned `/aurastream2`
-there, with Traefik stripping the prefix. **That route is still live**, deliberately: media URLs
-Buffer already holds carry the old base. Both routes serve the same `aurastream2-web` Service, so
-the old one keeps working for media even though the console it serves now asks for assets at the
-root and will not render there.
-
-Retire the old route — the `PathPrefix` IngressRoute and the `strip-aurastream2` Middleware,
-together — at least 24 hours after `Publish__PublicMediaBaseUrl` changed to the new host, once no
-scheduled post still points at the old base.
+Until 2026-09-08 v2 shared v1's hostname `ns3098488.ip-54-36-172.eu` and owned `/aurastream2`
+there, with Traefik stripping the prefix. That route, its `strip-aurastream2` Middleware and the
+duplicate `aurastream2-tls` certificate were **retired on 2026-09-09**. They were kept alive for a
+day after the move because media URLs Buffer already held carried the old base — and the safe
+moment to delete them is decided by `PublicMediaLink`, which protects every token with
+`TimeSpan.FromHours(24)`, so no published link can outlive a day regardless of routing. v1 owns
+its hostname alone again.
 
 Two things must agree, or the console breaks in ways that look unrelated:
 
