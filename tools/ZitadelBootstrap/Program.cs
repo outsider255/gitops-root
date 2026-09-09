@@ -58,6 +58,16 @@ internal static class BootstrapCommand
             await dependencies.Output.WriteLineAsync("System API request failed.");
             return ApiError;
         }
+        catch (HttpRequestException)
+        {
+            await dependencies.Output.WriteLineAsync("System API request failed.");
+            return ApiError;
+        }
+        catch (TaskCanceledException)
+        {
+            await dependencies.Output.WriteLineAsync("System API request failed.");
+            return ApiError;
+        }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or IOException or UnauthorizedAccessException or JsonException)
         {
             await dependencies.Output.WriteLineAsync("Invalid bootstrap input or configuration.");

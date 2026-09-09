@@ -56,6 +56,24 @@ public sealed class CommandTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Apply_redacts_transport_and_timeout_failures(bool timeout)
+    {
+        var output = new StringWriter();
+        var exitCode = await BootstrapCommand.RunAsync(
+            ["--config", "instances.json"],
+            new CommandDependencies(
+                RequiredApplyEnvironment().GetValueOrDefault,
+                path => path == "key.pem" ? GeneratedTestPrivateKey() : File.ReadAllText(path),
+                () => new HttpClient(new ThrowingHandler(timeout)),
+                output));
+
+        Assert.Equal(3, exitCode);
+        Assert.Equal("System API request failed." + Environment.NewLine, output.ToString());
+    }
+
+    [Theory]
     [InlineData("ZITADEL_SYSTEM_PRIVATE_KEY_FILE", null)]
     [InlineData("ZITADEL_SYSTEM_URL", "http://zitadel.example")]
     [InlineData("ZITADEL_OWNER_PLANSZOMAT_USERNAME", null)]
@@ -110,5 +128,13 @@ public sealed class CommandTests
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(json) });
+    }
+
+    private sealed class ThrowingHandler(bool timeout) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            timeout
+                ? Task.FromException<HttpResponseMessage>(new TaskCanceledException("secret timeout detail"))
+                : Task.FromException<HttpResponseMessage>(new HttpRequestException("secret transport detail"));
     }
 }
