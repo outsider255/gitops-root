@@ -31,6 +31,36 @@ public sealed class ZitadelSystemClientTests
     }
 
     [Fact]
+    public async Task EnsureInstanceAsync_creates_when_an_empty_search_omits_the_result_field()
+    {
+        // ZITADEL's protobuf JSON omits `result` entirely rather than sending an empty array,
+        // which is exactly the shape of every first provisioning run. Live response observed
+        // against v4.17.1: { "details": { ... } } and no `result` property at all.
+        var handler = new RecordingHandler(
+            """{ "details": { "totalResult": "0" } }""",
+            """{ "instanceId": "987" }""");
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://identity.example.test") };
+        var client = new ZitadelSystemClient(http, "system-jwt");
+
+        var result = await client.EnsureInstanceAsync(Spec(), Owner(), CancellationToken.None);
+
+        Assert.Equal(new EnsureResult("planszomat", "987", true), result);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal("/system/v1/instances/_create", handler.Requests[1].Path);
+    }
+
+    [Fact]
+    public async Task EnsureInstanceAsync_rejects_a_result_field_that_is_not_an_array()
+    {
+        var handler = new RecordingHandler("""{ "result": "unexpected" }""");
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://identity.example.test") };
+        var client = new ZitadelSystemClient(http, "system-jwt");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.EnsureInstanceAsync(Spec(), Owner(), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task EnsureInstanceAsync_filters_the_search_by_domain_so_a_later_default_page_cannot_create_a_duplicate()
     {
         var handler = new DomainFilteredSearchHandler();

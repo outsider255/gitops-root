@@ -116,7 +116,16 @@ public sealed class ZitadelSystemClient
     private static async Task<List<SystemInstance>> ReadInstancesAsync(HttpResponseMessage response, CancellationToken ct)
     {
         using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        if (!document.RootElement.TryGetProperty("result", out var results) || results.ValueKind != JsonValueKind.Array)
+        // A search that matches nothing omits `result` altogether — protobuf JSON does not emit
+        // empty repeated fields — and that is the shape of every first provisioning run. Treating
+        // it as an error made the command fail precisely when it had work to do. A `result` that
+        // is present but not an array is still a malformed response and still an error.
+        if (!document.RootElement.TryGetProperty("result", out var results))
+        {
+            return [];
+        }
+
+        if (results.ValueKind != JsonValueKind.Array)
         {
             throw new InvalidOperationException("The System API search response did not include an instance list.");
         }
