@@ -31,6 +31,24 @@ public sealed class ZitadelSystemClientTests
     }
 
     [Fact]
+    public async Task EnsureInstanceAsync_filters_the_search_by_domain_so_a_later_default_page_cannot_create_a_duplicate()
+    {
+        var handler = new DomainFilteredSearchHandler();
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://identity.example.test") };
+        var client = new ZitadelSystemClient(http, "system-jwt");
+
+        var result = await client.EnsureInstanceAsync(Spec(), Owner(), CancellationToken.None);
+
+        Assert.Equal(new EnsureResult("planszomat", "987", false), result);
+        var search = Assert.Single(handler.Requests);
+        Assert.Equal("/system/v1/instances/_search", search.Path);
+        using var body = JsonDocument.Parse(search.Body);
+        Assert.Equal(20, body.RootElement.GetProperty("query").GetProperty("limit").GetInt32());
+        Assert.Equal("login.najtanszaplansza.pl", body.RootElement.GetProperty("queries")[0]
+            .GetProperty("domainQuery").GetProperty("domains")[0].GetString());
+    }
+
+    [Fact]
     public async Task EnsureInstanceAsync_creates_missing_instance_with_the_configured_owner()
     {
         var handler = new RecordingHandler("{ \"result\": [] }", "{ \"instanceId\": \"123456789\" }");
@@ -139,6 +157,43 @@ public sealed class ZitadelSystemClientTests
             return new HttpResponseMessage(StatusCode)
             {
                 Content = new StringContent(responses.Dequeue(), Encoding.UTF8, "application/json"),
+            };
+        }
+    }
+
+    private sealed class DomainFilteredSearchHandler : HttpMessageHandler
+    {
+        public List<CapturedRequest> Requests { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var captured = new CapturedRequest(
+                request.Method,
+                request.RequestUri!.AbsolutePath,
+                request.Headers.Authorization,
+                request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken));
+            Requests.Add(captured);
+
+            var isExactDomainQuery = false;
+            if (captured.Path == "/system/v1/instances/_search")
+            {
+                using var body = JsonDocument.Parse(captured.Body);
+                isExactDomainQuery = body.RootElement.TryGetProperty("queries", out var queries) &&
+                    queries.ValueKind == JsonValueKind.Array && queries.GetArrayLength() == 1 &&
+                    queries[0].TryGetProperty("domainQuery", out var domainQuery) &&
+                    domainQuery.TryGetProperty("domains", out var domains) &&
+                    domains.ValueKind == JsonValueKind.Array && domains.GetArrayLength() == 1 &&
+                    domains[0].GetString() == "login.najtanszaplansza.pl";
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    isExactDomainQuery
+                        ? "{ \"result\": [{ \"id\": \"987\", \"name\": \"Planszomat\", \"domains\": [{ \"domain\": \"login.najtanszaplansza.pl\" }] }] }"
+                        : "{ \"result\": [] }",
+                    Encoding.UTF8,
+                    "application/json"),
             };
         }
     }

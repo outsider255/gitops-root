@@ -21,6 +21,7 @@ public sealed class ZitadelSystemApiException(HttpStatusCode statusCode, string?
 public sealed class ZitadelSystemClient
 {
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromMinutes(10);
+    private const int DomainSearchLimit = 20;
     private readonly HttpClient http;
     private readonly string bearerToken;
 
@@ -38,7 +39,15 @@ public sealed class ZitadelSystemClient
         ArgumentNullException.ThrowIfNull(spec);
         ArgumentNullException.ThrowIfNull(owner);
 
-        using var searchResponse = await SendAsync("/system/v1/instances/_search", "{}", ct);
+        var searchJson = JsonSerializer.Serialize(new
+        {
+            query = new { limit = DomainSearchLimit },
+            queries = new[]
+            {
+                new { domainQuery = new { domains = new[] { spec.CustomDomain } } },
+            },
+        });
+        using var searchResponse = await SendAsync("/system/v1/instances/_search", searchJson, ct);
         var existing = await ReadInstancesAsync(searchResponse, ct);
         var matchingDomains = existing.Where(instance => instance.Domains.Contains(spec.CustomDomain, StringComparer.OrdinalIgnoreCase)).ToList();
 
