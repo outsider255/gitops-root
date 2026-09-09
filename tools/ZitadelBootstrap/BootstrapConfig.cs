@@ -14,12 +14,12 @@ public sealed record ProductInstanceSpec(
 
 public sealed record BootstrapConfig(IReadOnlyList<ProductInstanceSpec> Instances)
 {
-    public static BootstrapConfig Load(string path, Func<string, string?> environment)
+    public static BootstrapConfig Load(string path, Func<string, string?> environment, Func<string, string>? readFile = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(environment);
 
-        var document = JsonSerializer.Deserialize<InstanceDocument>(File.ReadAllText(path))
+        var document = JsonSerializer.Deserialize<InstanceDocument>((readFile ?? File.ReadAllText)(path))
             ?? throw new InvalidOperationException("The instance configuration is empty.");
         var instances = document.Instances
             ?? throw new InvalidOperationException("The instance configuration must contain instances.");
