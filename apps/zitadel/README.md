@@ -149,6 +149,59 @@ zitadel-system-api-public
 
 Keep the corresponding private key only in the password manager/operator workspace.
 
+## Product-instance bootstrap command
+
+`tools/ZitadelBootstrap` creates or reconciles the isolated Planszomat and
+Aurastream ZITADEL instances described by `tools/ZitadelBootstrap/instances.json`.
+It never deletes instances, domains, organizations, or users.
+
+Generate the System API RSA keypair in a secure operator workspace. Install only its
+public key in `zitadel-system-api-public/system-user.pub`; retain the private PEM in
+the operator password manager and reference its local path with
+`ZITADEL_SYSTEM_PRIVATE_KEY_FILE`. Keep both product-owner passwords in that password
+manager as well. Do not commit, print, place in command arguments, or copy any of
+these values into manifests.
+
+The apply command requires all of these environment variables in the operator shell:
+
+```text
+ZITADEL_SYSTEM_URL
+ZITADEL_SYSTEM_USER
+ZITADEL_SYSTEM_PRIVATE_KEY_FILE
+ZITADEL_DOMAIN_PLANSZOMAT
+ZITADEL_DOMAIN_AURASTREAM
+ZITADEL_OWNER_PLANSZOMAT_USERNAME
+ZITADEL_OWNER_PLANSZOMAT_EMAIL
+ZITADEL_OWNER_PLANSZOMAT_FIRST_NAME
+ZITADEL_OWNER_PLANSZOMAT_LAST_NAME
+ZITADEL_OWNER_PLANSZOMAT_PASSWORD
+ZITADEL_OWNER_AURASTREAM_USERNAME
+ZITADEL_OWNER_AURASTREAM_EMAIL
+ZITADEL_OWNER_AURASTREAM_FIRST_NAME
+ZITADEL_OWNER_AURASTREAM_LAST_NAME
+ZITADEL_OWNER_AURASTREAM_PASSWORD
+```
+
+First run the local safe dry run with only the two domain variables set. It reads the
+configuration and domains, but never reads system/owner credentials or the PEM, creates
+an HTTP client, or sends a request:
+
+```powershell
+dotnet run --project tools/ZitadelBootstrap -- --config tools/ZitadelBootstrap/instances.json --dry-run
+```
+
+The non-dry command performs provisioning and requires the named operator to hold the
+credentials above and obtain the required operational approval before it is run. It was
+not executed as part of this repository work:
+
+```powershell
+dotnet run --project tools/ZitadelBootstrap -- --config tools/ZitadelBootstrap/instances.json
+```
+
+After an approved apply, re-run the same non-dry command to verify that both product
+rows report `unchanged`. Treat any unexpected `created`, error, or missing row as an
+operator investigation; do not attempt cleanup by deleting resources.
+
 The external `system-bootstrap` System API user is the automation identity. The
 chart's default `FirstInstance.Org.Machine` is disabled, so it does not generate
 `iam-admin` machine/PAT Secrets, kubectl writer containers, or namespace RBAC.
