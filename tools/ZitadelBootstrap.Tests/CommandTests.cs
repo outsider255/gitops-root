@@ -73,6 +73,45 @@ public sealed class CommandTests
         Assert.Equal("System API request failed." + Environment.NewLine, output.ToString());
     }
 
+    [Fact]
+    public async Task Apply_rejects_a_system_user_other_than_system_bootstrap_before_http()
+    {
+        var environment = RequiredApplyEnvironment();
+        environment["ZITADEL_SYSTEM_USER"] = "another-system-user";
+        var output = new StringWriter();
+
+        var exitCode = await BootstrapCommand.RunAsync(
+            ["--config", "instances.json"],
+            new CommandDependencies(
+                environment.GetValueOrDefault,
+                path => path == "instances.json"
+                    ? File.ReadAllText(path)
+                    : throw new Xunit.Sdk.XunitException($"Unexpected file read '{path}'."),
+                () => throw new Xunit.Sdk.XunitException("Invalid subject created HTTP."),
+                output));
+
+        Assert.Equal(2, exitCode);
+        Assert.Equal("Invalid bootstrap input or configuration." + Environment.NewLine, output.ToString());
+    }
+
+    [Fact]
+    public async Task Apply_redacts_machine_credentials_echoed_by_the_system_api()
+    {
+        var output = new StringWriter();
+        var exitCode = await BootstrapCommand.RunAsync(
+            ["--config", "instances.json"],
+            new CommandDependencies(
+                RequiredApplyEnvironment().GetValueOrDefault,
+                path => path == "key.pem" ? GeneratedTestPrivateKey() : File.ReadAllText(path),
+                () => new HttpClient(new ErrorResponseHandler()),
+                output));
+
+        Assert.Equal(3, exitCode);
+        Assert.Equal("System API request failed." + Environment.NewLine, output.ToString());
+        Assert.DoesNotContain("secret", output.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", output.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
     [Theory]
     [InlineData("ZITADEL_SYSTEM_PRIVATE_KEY_FILE", null)]
     [InlineData("ZITADEL_SYSTEM_URL", "http://zitadel.example")]
@@ -104,7 +143,7 @@ public sealed class CommandTests
         ["ZITADEL_DOMAIN_PLANSZOMAT"] = "login.najtanszaplansza.pl",
         ["ZITADEL_DOMAIN_AURASTREAM"] = "login.aurastream.example",
         ["ZITADEL_SYSTEM_URL"] = "https://zitadel.example",
-        ["ZITADEL_SYSTEM_USER"] = "system-user",
+        ["ZITADEL_SYSTEM_USER"] = "system-bootstrap",
         ["ZITADEL_SYSTEM_PRIVATE_KEY_FILE"] = "key.pem",
         ["ZITADEL_OWNER_PLANSZOMAT_USERNAME"] = "planszomat-owner",
         ["ZITADEL_OWNER_PLANSZOMAT_EMAIL"] = "owner@najtanszaplansza.pl",
@@ -136,5 +175,14 @@ public sealed class CommandTests
             timeout
                 ? Task.FromException<HttpResponseMessage>(new TaskCanceledException("secret timeout detail"))
                 : Task.FromException<HttpResponseMessage>(new HttpRequestException("secret transport detail"));
+    }
+
+    private sealed class ErrorResponseHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.Forbidden)
+            {
+                Content = new StringContent("""{ "code": 7, "message": "secret owner password and bearer token" }"""),
+            });
     }
 }

@@ -120,7 +120,7 @@ public sealed class ZitadelSystemClientTests
     [Fact]
     public async Task EnsureInstanceAsync_raises_a_redacted_api_error_for_non_success_response()
     {
-        var handler = new RecordingHandler("""{ "code": 7, "message": "access denied" }""") { StatusCode = HttpStatusCode.Forbidden };
+        var handler = new RecordingHandler("""{ "code": 7, "message": "access denied; owner password from-environment; bearer token system-jwt" }""") { StatusCode = HttpStatusCode.Forbidden };
         using var http = new HttpClient(handler) { BaseAddress = new Uri("https://identity.example.test") };
         var client = new ZitadelSystemClient(http, "system-jwt");
 
@@ -129,8 +129,9 @@ public sealed class ZitadelSystemClientTests
 
         Assert.Equal(HttpStatusCode.Forbidden, exception.StatusCode);
         Assert.Equal("7", exception.ApiCode);
-        Assert.Contains("access denied", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("access denied", exception.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("from-environment", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("system-jwt", exception.Message, StringComparison.Ordinal);
     }
 
     private static ProductInstanceSpec Spec() => new(

@@ -12,6 +12,7 @@ internal static class BootstrapCommand
 {
     private const int ConfigurationError = 2;
     private const int ApiError = 3;
+    private const string RequiredSystemUser = "system-bootstrap";
 
     public static async Task<int> RunAsync(string[] args, CommandDependencies dependencies, CancellationToken cancellationToken = default)
     {
@@ -37,6 +38,11 @@ internal static class BootstrapCommand
             }
 
             var systemUser = RequiredEnvironment(dependencies.Environment, "ZITADEL_SYSTEM_USER");
+            if (!string.Equals(systemUser, RequiredSystemUser, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("ZITADEL_SYSTEM_USER must be system-bootstrap.");
+            }
+
             var privateKeyPath = RequiredEnvironment(dependencies.Environment, "ZITADEL_SYSTEM_PRIVATE_KEY_FILE");
             var owners = config.Instances.Select(spec => (spec, Owner: ReadOwner(spec, dependencies.Environment))).ToList();
             var privateKeyPem = dependencies.ReadFile(privateKeyPath);

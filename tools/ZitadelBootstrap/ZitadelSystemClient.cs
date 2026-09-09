@@ -10,8 +10,8 @@ public sealed record InstanceOwner(
 
 public sealed record EnsureResult(string Key, string InstanceId, bool Created);
 
-public sealed class ZitadelSystemApiException(HttpStatusCode statusCode, string? apiCode, string? apiMessage)
-    : InvalidOperationException($"ZITADEL System API request failed with {(int)statusCode} ({apiCode ?? "unknown"}): {apiMessage ?? "no message"}.")
+public sealed class ZitadelSystemApiException(HttpStatusCode statusCode, string? apiCode)
+    : InvalidOperationException($"ZITADEL System API request failed with {(int)statusCode} ({apiCode ?? "unknown"}).")
 {
     public HttpStatusCode StatusCode { get; } = statusCode;
 
@@ -147,7 +147,6 @@ public sealed class ZitadelSystemClient
     private static async Task<ZitadelSystemApiException> ReadApiErrorAsync(HttpResponseMessage response, CancellationToken ct)
     {
         string? code = null;
-        string? message = null;
         try
         {
             using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
@@ -156,17 +155,12 @@ public sealed class ZitadelSystemClient
                 code = codeValue.ToString();
             }
 
-            if (document.RootElement.TryGetProperty("message", out var messageValue))
-            {
-                message = messageValue.GetString();
-            }
         }
         catch (JsonException)
         {
-            message = "unparseable error response";
         }
 
-        return new ZitadelSystemApiException(response.StatusCode, code, message);
+        return new ZitadelSystemApiException(response.StatusCode, code);
     }
 
     private sealed record SystemInstance(string Id, string Name, IReadOnlyList<string> Domains);
