@@ -1,8 +1,9 @@
-# aurastream2 — v2, deployed alongside v1
+# aurastream2
 
 v2 runs in its own namespace, with its own SQL Server and its own database. **v1 (`apps/aurastream`)
-is untouched** and keeps publishing until it is deliberately stood down at the end of
-`docs/ops/cutover-runbook.md` in the aurastream2 repo.
+was retired on 2026-09-16**: its Application, manifests and Grafana dashboard were removed and its
+data deleted without a backup (accepted by the operator). The v1 code repo is kept; its CI bump job
+skips when `apps/aurastream` is absent. Nothing serves the bare `ns3098488.ip-54-36-172.eu` host any more.
 
 Manifests are ported from `aurastream2/deploy/` with the cluster-specific placeholders resolved.
 The reasoning behind each one (why the media PVC is RWO, why the streamer is `replicas: 1` +
