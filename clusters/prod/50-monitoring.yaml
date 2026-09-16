@@ -50,12 +50,52 @@ spec:
             enabled: true
             storageClassName: local-path
             size: 2Gi
+          # ClusterIP only: reached through Traefik at grafana.stocznia.dev (TLS + rate limit).
+          # It was a NodePort (30300), which published the login page over plain HTTP on the
+          # box's public IP, bypassing both.
           service:
-            type: NodePort
-            nodePort: 30300
+            type: ClusterIP
 
         alertmanager:
+          # Notifications go to an ntfy topic (phone push). The topic URL is a secret — anyone
+          # who knows it can read the alerts — so it lives in the hand-made Secret
+          # `alertmanager-ntfy` (key `url`, value https://ntfy.sh/<topic>?template=alertmanager)
+          # and is read with url_file. Create that Secret BEFORE syncing this: the pod mounts it.
+          config:
+            global:
+              resolve_timeout: 5m
+            route:
+              receiver: ntfy
+              group_by: [namespace, alertname]
+              group_wait: 30s
+              group_interval: 5m
+              repeat_interval: 12h
+              routes:
+                - receiver: "null"
+                  matchers: ['alertname=~"Watchdog|InfoInhibitor"']
+                - receiver: "null"
+                  matchers: ['severity=~"info|none"']
+            inhibit_rules:
+              - source_matchers: ['severity="critical"']
+                target_matchers: ['severity=~"warning|info"']
+                equal: [namespace, alertname]
+              - source_matchers: ['severity="warning"']
+                target_matchers: ['severity="info"']
+                equal: [namespace, alertname]
+              - source_matchers: ['alertname="InfoInhibitor"']
+                target_matchers: ['severity="info"']
+                equal: [namespace]
+            receivers:
+              - name: "null"
+              - name: ntfy
+                webhook_configs:
+                  - url_file: /etc/alertmanager/secrets/alertmanager-ntfy/url
+                    send_resolved: true
+                    max_alerts: 10
+                    timeout: 10s
           alertmanagerSpec:
+            secrets:
+              - alertmanager-ntfy
             storage:
               volumeClaimTemplate:
                 spec:
