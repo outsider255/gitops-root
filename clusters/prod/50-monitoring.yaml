@@ -91,7 +91,10 @@ spec:
                 webhook_configs:
                   - url_file: /etc/alertmanager/secrets/alertmanager-ntfy/url
                     send_resolved: true
-                    max_alerts: 10
+                    # ntfy rejects a templated message over ~4 KB (HTTP 400 "too large after
+                    # replacing template"); one alert renders to ~450 chars, so 13 grouped
+                    # KubeJobFailed alerts failed. 5 leaves margin for longer labels.
+                    max_alerts: 5
                     timeout: 10s
           alertmanagerSpec:
             secrets:
