@@ -19,9 +19,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $enc = { param($s) [uri]::EscapeDataString($s) }
-$title = Get-Content -Raw -Encoding utf8 "$PSScriptRoot\title.tmpl"
-$message = Get-Content -Raw -Encoding utf8 "$PSScriptRoot\message.tmpl"
-$priority = (Get-Content -Raw -Encoding utf8 "$PSScriptRoot\priority.tmpl").Trim()
+# CRLF checkouts (core.autocrlf) would put `r into the rendered notification.
+$read = { param($f) (Get-Content -Raw -Encoding utf8 (Join-Path $PSScriptRoot $f)) -replace "`r", '' }
+$title = (& $read 'title.tmpl').TrimEnd("`n")
+$message = & $read 'message.tmpl'
+$priority = (& $read 'priority.tmpl').Trim()
 $url = "https://ntfy.sh/$Topic`?tpl=yes&t=$(& $enc $title)&m=$(& $enc $message)&p=$(& $enc $priority)"
 
 if ($Preview) {
