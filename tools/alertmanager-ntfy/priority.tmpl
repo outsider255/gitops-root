@@ -1,0 +1,1 @@
+{{ if eq .status "resolved" }}2{{ else if eq .commonLabels.severity "critical" }}5{{ else }}3{{ end }}

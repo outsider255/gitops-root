@@ -61,6 +61,9 @@ spec:
           # who knows it can read the alerts — so it lives in the hand-made Secret
           # `alertmanager-ntfy` (key `url`, value https://ntfy.sh/<topic>?template=alertmanager)
           # and is read with url_file. Create that Secret BEFORE syncing this: the pod mounts it.
+          # The URL also carries the notification templates (short title, affected objects, a
+          # hint): edit tools/alertmanager-ntfy/*.tmpl, preview, then write the Secret with
+          # tools/alertmanager-ntfy/apply.ps1 -Topic <topic>.
           config:
             global:
               resolve_timeout: 5m

@@ -1,0 +1,21 @@
+{{- $hints := dict "KubeJobFailed" "Logs: kubectl -n NS logs job/<name>. Delete the failed Job to clear the alert." "KubeJobNotCompleted" "Job runs past its deadline — check logs, it may be hung." "KubePodCrashLooping" "Logs: kubectl -n NS logs <pod> --previous" "KubePodNotReady" "kubectl -n NS describe pod <pod> — probes, image pull, missing Secret?" "KubeContainerWaiting" "Usually a missing Secret/ConfigMap or image pull error: describe the pod." "KubeDeploymentReplicasMismatch" "describe the deployment's pods." "KubeStatefulSetReplicasMismatch" "describe the statefulset's pods." "KubePersistentVolumeFillingUp" "Free space or grow the PVC." "NodeFilesystemSpaceFillingUp" "Disk on kraken: df -h /, then du /var/lib/rancher/k3s/storage" "NodeFilesystemAlmostOutOfSpace" "Disk on kraken almost full — act now." "TargetDown" "Service not answering metrics scrapes — pod down?" "AlertmanagerFailedToSendAlerts" "ntfy rejected or unreachable — check alertmanager logs." "AlertmanagerClusterFailedToSendAlerts" "ntfy rejected or unreachable — check alertmanager logs." -}}
+{{- $objs := list -}}
+{{- range .alerts -}}
+  {{- $l := .labels -}}
+  {{- $o := coalesce $l.job_name $l.cronjob $l.pod $l.deployment $l.statefulset $l.daemonset $l.persistentvolumeclaim $l.certificate "" -}}
+  {{- if and (not $o) $l.mountpoint }}{{ $o = cat "disk" $l.mountpoint }}{{ end -}}
+  {{- if and (not $o) (ne ($l.job | default "") "kube-state-metrics") }}{{ $o = coalesce $l.service $l.instance "" }}{{ end -}}
+  {{- $o = regexReplaceAll "-[0-9]{6,}$" $o "" -}}
+  {{- $o = regexReplaceAll "-[a-z0-9]{8,10}-[a-z0-9]{5}$" $o "" -}}
+  {{- if $o }}{{ $objs = append $objs $o }}{{ end -}}
+{{- end -}}
+{{- $objs = uniq $objs -}}
+{{- $first := index .alerts 0 -}}
+{{- if $objs }}{{ join ", " $objs }}{{ if .truncatedAlerts }} (+{{ .truncatedAlerts }} more){{ end }}
+{{ end -}}
+{{- if ne .status "resolved" -}}
+{{ with get $hints .commonLabels.alertname }}→ {{ replace "NS" ($.commonLabels.namespace | default "NS") . }}
+{{ else }}{{ $first.annotations.summary | default $first.annotations.description | trimSuffix "." }}
+{{ end -}}
+Since {{ $first.startsAt | trunc 16 | replace "T" " " }} UTC
+{{- end -}}
