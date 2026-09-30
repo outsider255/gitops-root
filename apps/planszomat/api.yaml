@@ -35,20 +35,23 @@ spec:
                 secretKeyRef:
                   name: planszomat-db
                   key: PLANSZOMAT_DB
-            # The API refuses to start without this — booting without it would serve
-            # /basket/plan unprotected. Until the planszomat-supabase secret exists
-            # the pod sits in CreateContainerConfigError, exactly like postgres did
-            # before its secret; it self-heals when the secret appears.
-            - name: SUPABASE_URL
+            # Authentication is ZITADEL-only. All three values are required so the API
+            # fails closed instead of starting with an incomplete trust boundary.
+            - name: ZITADEL_ISSUER
               valueFrom:
                 secretKeyRef:
-                  name: planszomat-supabase
-                  key: SUPABASE_URL
-            # The one account /admin/review admits. Unset would fail closed (routes
-            # admit nobody); a plain value, not a secret — it gates nothing by secrecy,
-            # the Supabase-signed token's email claim does the work.
-            - name: PLANSZOMAT_ADMIN_EMAIL
-              value: outsider255@gmail.com
+                  name: planszomat-identity
+                  key: ZITADEL_ISSUER
+            - name: OIDC_AUDIENCE
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-identity
+                  key: OIDC_AUDIENCE
+            - name: ZITADEL_ROLE_CLAIM
+              valueFrom:
+                secretKeyRef:
+                  name: planszomat-identity
+                  key: ZITADEL_ROLE_CLAIM
           # TCP, not HTTP: there is no /health route, and probing /deals would run a
           # real database query every period for nothing.
           readinessProbe:
