@@ -6,7 +6,9 @@ metadata:
   name: match-worker
   namespace: planszomat
 spec:
-  replicas: 1
+  # Legacy OpenRouter adjudicator, off since 2026-09-30: out of credits and replaced by
+  # catalogue matching (Jev) at cutover. Unresolved offers wait in the queue meanwhile.
+  replicas: 0
   revisionHistoryLimit: 3
   strategy:
     type: Recreate

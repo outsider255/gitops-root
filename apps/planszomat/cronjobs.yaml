@@ -83,9 +83,11 @@ spec:
   jobTemplate:
     spec:
       activeDeadlineSeconds: 900
+      # Leaks are a finding, not a crash: fail once and keep the pod so its log stays readable.
+      backoffLimit: 0
       template:
         spec:
-          restartPolicy: OnFailure
+          restartPolicy: Never
           imagePullSecrets:
             - name: ghcr-pull
           containers:
@@ -541,9 +543,9 @@ metadata:
   namespace: planszomat
 spec:
   suspend: false
-  # Matching is local-only and fast; frequent runs enqueue unresolved work without waiting
-  # for BGG or OpenRouter. The durable workers drain those queues independently.
-  schedule: "*/5 * * * *"
+  # Nightly after the 01:00 crawls. The legacy OpenRouter match-worker is scaled to zero
+  # (catalogue matching replaces it at cutover), so frequent runs have nothing to feed.
+  schedule: "0 3 * * *"
   timeZone: Etc/UTC
   # A node/controller outage over 01:00-03:00 should skip a badly-missed slot rather
   # than fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself,
@@ -609,7 +611,8 @@ spec:
       backoffLimit: 0
       template:
         spec:
-          restartPolicy: OnFailure
+          # Never: a refused night leaves its pod, so the refusal reason stays in the log.
+          restartPolicy: Never
           imagePullSecrets:
             - name: ghcr-pull
           containers:
