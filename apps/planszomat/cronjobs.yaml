@@ -246,7 +246,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:e9a3fec48b6b2e3a099e9fd3e612b437478aecc1
+              image: ghcr.io/outsider255/planszomat-cli:fdd178eb69fda21b8faf8751378beaae07ff2cc6
               args: ["crawl", "grybezpradu"]
               env:
                 - name: PLANSZOMAT_DB
@@ -300,7 +300,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:e9a3fec48b6b2e3a099e9fd3e612b437478aecc1
+              image: ghcr.io/outsider255/planszomat-cli:fdd178eb69fda21b8faf8751378beaae07ff2cc6
               args: ["crawl", "3trolle"]
               env:
                 - name: PLANSZOMAT_DB
@@ -354,7 +354,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:e9a3fec48b6b2e3a099e9fd3e612b437478aecc1
+              image: ghcr.io/outsider255/planszomat-cli:fdd178eb69fda21b8faf8751378beaae07ff2cc6
               args: ["crawl", "xjoy"]
               env:
                 - name: PLANSZOMAT_DB
@@ -408,7 +408,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:e9a3fec48b6b2e3a099e9fd3e612b437478aecc1
+              image: ghcr.io/outsider255/planszomat-cli:fdd178eb69fda21b8faf8751378beaae07ff2cc6
               args: ["crawl", "graszki"]
               env:
                 - name: PLANSZOMAT_DB
@@ -462,7 +462,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:e9a3fec48b6b2e3a099e9fd3e612b437478aecc1
+              image: ghcr.io/outsider255/planszomat-cli:fdd178eb69fda21b8faf8751378beaae07ff2cc6
               args: ["crawl", "mepel"]
               env:
                 - name: PLANSZOMAT_DB
