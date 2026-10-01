@@ -34,7 +34,7 @@ spec:
   schedule: "30 0 * * *"
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -78,7 +78,7 @@ spec:
   timeZone: Etc/UTC
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -123,7 +123,7 @@ spec:
   # A crawl that overruns into the next night must not have a second copy
   # started on top of it.
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -176,7 +176,7 @@ spec:
   # A crawl that overruns into the next night must not have a second copy
   # started on top of it.
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -230,7 +230,7 @@ spec:
   # A crawl that overruns into the next night must not have a second copy
   # started on top of it.
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -284,7 +284,7 @@ spec:
   # A crawl that overruns into the next night must not have a second copy
   # started on top of it.
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -338,7 +338,7 @@ spec:
   # A crawl that overruns into the next night must not have a second copy
   # started on top of it.
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -392,7 +392,7 @@ spec:
   # A crawl that overruns into the next night must not have a second copy
   # started on top of it.
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -446,7 +446,7 @@ spec:
   # A crawl that overruns into the next night must not have a second copy
   # started on top of it.
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -499,7 +499,7 @@ spec:
   # A crawl that overruns into the next night must not have a second copy
   # started on top of it.
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -556,7 +556,7 @@ spec:
   # failure is usually a transient database problem, where retrying is the right
   # answer, and there is no third party here to annoy the way a retried crawl would.
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -600,7 +600,7 @@ spec:
   # one issue rather than a scrambled one.
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
@@ -649,7 +649,7 @@ spec:
   timeZone: Etc/UTC
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
