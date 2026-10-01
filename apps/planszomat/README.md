@@ -9,7 +9,8 @@ Required Secrets in namespace `planszomat`:
 - `planszomat-db`: `POSTGRES_PASSWORD` and `PLANSZOMAT_DB`.
 - `planszomat-identity`: `ZITADEL_ISSUER`, `OIDC_AUDIENCE`, and `ZITADEL_ROLE_CLAIM`.
 - `planszomat-bgg`: `BGG_API_TOKEN`.
-- `planszomat-openrouter`: `OPENROUTER_API_KEY`.
+- `planszomat-openrouter`: `OPENROUTER_API_KEY` (check-shipping only).
+- `planszomat-typesafe`: `TYPESAFE_API_KEY` (classify-names-worker, Jev).
 
 The API accepts only access tokens issued by the configured Planszomat ZITADEL instance for the
 configured audience. Administrator routes additionally require the `planszomat.admin` project

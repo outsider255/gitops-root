@@ -543,8 +543,8 @@ metadata:
   namespace: planszomat
 spec:
   suspend: false
-  # Nightly after the 01:00 crawls. The legacy OpenRouter match-worker is scaled to zero
-  # (catalogue matching replaces it at cutover), so frequent runs have nothing to feed.
+  # Nightly after the 01:00 crawls. The legacy model adjudicator (match-worker) is removed
+  # (catalogue matching replaces it at cutover); unresolved offers stay unmatched until then.
   schedule: "0 3 * * *"
   timeZone: Etc/UTC
   # A node/controller outage over 01:00-03:00 should skip a badly-missed slot rather
