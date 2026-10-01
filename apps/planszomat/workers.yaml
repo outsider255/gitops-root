@@ -6,7 +6,9 @@ metadata:
   name: bgg-worker
   namespace: planszomat
 spec:
-  replicas: 1
+  # Off: BGG (Cloudflare) answers 403/429 to the OVH node IP, so the worker only retried.
+  # Run `bgg-worker` / `sync-bgg` by hand from a home IP through the DB tunnel instead.
+  replicas: 0
   revisionHistoryLimit: 3
   strategy:
     type: Recreate
