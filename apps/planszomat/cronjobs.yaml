@@ -35,9 +35,12 @@ spec:
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # Same courtesy argument as the crawls: don't hammer a shop that just refused us.
       # Exit 1 also covers a dead selector (no-links), which retrying cannot fix.
       backoffLimit: 1
@@ -79,9 +82,12 @@ spec:
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       activeDeadlineSeconds: 900
       # Leaks are a finding, not a crash: fail once and keep the pod so its log stays readable.
       backoffLimit: 0
@@ -124,9 +130,12 @@ spec:
   # started on top of it.
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
       # everywhere else; six unattended retries against a shop that may already be
       # rate-limiting or rejecting us would undo that.
@@ -177,9 +186,12 @@ spec:
   # started on top of it.
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
       # everywhere else; six unattended retries against a shop that may already be
       # rate-limiting or rejecting us would undo that.
@@ -231,9 +243,12 @@ spec:
   # started on top of it.
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
       # everywhere else; six unattended retries against a shop that may already be
       # rate-limiting or rejecting us would undo that.
@@ -285,9 +300,12 @@ spec:
   # started on top of it.
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
       # everywhere else; six unattended retries against a shop that may already be
       # rate-limiting or rejecting us would undo that.
@@ -339,9 +357,12 @@ spec:
   # started on top of it.
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
       # everywhere else; six unattended retries against a shop that may already be
       # rate-limiting or rejecting us would undo that.
@@ -393,9 +414,12 @@ spec:
   # started on top of it.
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
       # everywhere else; six unattended retries against a shop that may already be
       # rate-limiting or rejecting us would undo that.
@@ -447,9 +471,12 @@ spec:
   # started on top of it.
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
       # everywhere else; six unattended retries against a shop that may already be
       # rate-limiting or rejecting us would undo that.
@@ -500,9 +527,12 @@ spec:
   # started on top of it.
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
       # everywhere else; six unattended retries against a shop that may already be
       # rate-limiting or rejecting us would undo that.
@@ -557,9 +587,12 @@ spec:
   # answer, and there is no third party here to annoy the way a retried crawl would.
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       activeDeadlineSeconds: 3600
       template:
         spec:
@@ -601,9 +634,12 @@ spec:
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       activeDeadlineSeconds: 1800
       # A refusal to publish is a designed outcome, not a crash — the guard and the
       # migrations it runs first shouldn't be retried six times for it. Zero makes
@@ -650,9 +686,12 @@ spec:
   startingDeadlineSeconds: 900
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
       # BGG throttles hard (5 s between requests); unattended retries against a
       # throttling API are the crawl argument all over again.
       backoffLimit: 1
