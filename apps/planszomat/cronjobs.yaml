@@ -106,6 +106,8 @@ spec:
                     secretKeyRef:
                       name: planszomat-db
                       key: PLANSZOMAT_DB
+                - name: PLANSZOMAT_READ_MODEL
+                  value: catalog
               resources:
                 requests:
                   cpu: 100m
@@ -665,6 +667,8 @@ spec:
                     secretKeyRef:
                       name: planszomat-db
                       key: PLANSZOMAT_DB
+                - name: PLANSZOMAT_READ_MODEL
+                  value: catalog
               resources:
                 requests:
                   cpu: 100m

@@ -35,6 +35,8 @@ spec:
                 secretKeyRef:
                   name: planszomat-db
                   key: PLANSZOMAT_DB
+            - name: PLANSZOMAT_READ_MODEL
+              value: catalog
             # Authentication is ZITADEL-only. All three values are required so the API
             # fails closed instead of starting with an incomplete trust boundary.
             - name: ZITADEL_ISSUER
