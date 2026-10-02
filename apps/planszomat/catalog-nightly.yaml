@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: catalog-nightly
+  namespace: planszomat
+spec:
+  schedule: "0 4 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 3000
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: Never
+          terminationGracePeriodSeconds: 60
+          imagePullSecrets:
+            - name: ghcr-pull
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1654
+            runAsGroup: 1654
+            fsGroup: 1654
+          containers:
+            - name: nightly
+              image: ghcr.io/outsider255/planszomat-cli:7f51fcb1238146ff9436479850e789934c4b37cc
+              command: ["/bin/sh", "-ec"]
+              args:
+                - >-
+                  umask 077;
+                  mkdir -p /data/catalog-nightly/runs /data/catalog-nightly/cache;
+                  exec dotnet Planszomat.Cli.dll catalog-nightly
+                  --output /data/catalog-nightly/runs
+                  --cache /data/catalog-nightly/cache
+                  --page-size 25 --concurrency 16 --time-budget 45
+              env:
+                - name: PLANSZOMAT_READ_MODEL
+                  value: catalog
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+                - name: TYPESAFE_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-typesafe
+                      key: TYPESAFE_API_KEY
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits: { cpu: "1", memory: 1Gi }
+              volumeMounts:
+                - name: nightly-data
+                  mountPath: /data
+          volumes:
+            - name: nightly-data
+              persistentVolumeClaim:
+                claimName: catalog-nightly-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: catalog-nightly-data
+  namespace: planszomat
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
