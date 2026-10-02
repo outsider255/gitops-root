@@ -572,9 +572,9 @@ metadata:
   name: match
   namespace: planszomat
 spec:
-  suspend: false
-  # Nightly after the 01:00 crawls. The legacy model adjudicator (match-worker) is removed
-  # (catalogue matching replaces it at cutover); unresolved offers stay unmatched until then.
+  # Suspended for the catalogue cutover: legacy match must not write while catalogue
+  # assignments are migrated and read (docs/catalogue-cutover-plan.md). Delete after rollback window.
+  suspend: true
   schedule: "0 3 * * *"
   timeZone: Etc/UTC
   # A node/controller outage over 01:00-03:00 should skip a badly-missed slot rather
