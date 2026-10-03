@@ -27,7 +27,7 @@ spec:
             fsGroup: 1654
           containers:
             - name: nightly
-              image: ghcr.io/outsider255/planszomat-cli:eb27d992d7b4fc140b3b3a75ab9b5670dd94a16c
+              image: ghcr.io/outsider255/planszomat-cli:01f8569588e3c1840d1a92b75dc4bb4f33ebcc14
               command: ["/bin/sh", "-ec"]
               args:
                 - >-
