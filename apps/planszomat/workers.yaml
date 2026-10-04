@@ -51,7 +51,9 @@ metadata:
   name: classify-names-worker
   namespace: planszomat
 spec:
-  replicas: 1
+  # Off: its only job producers (sync-bgg, bgg-worker) are suspended, so it polled an empty
+  # queue every second. Scale back to 1 when BGG syncing resumes.
+  replicas: 0
   revisionHistoryLimit: 3
   strategy:
     type: Recreate
