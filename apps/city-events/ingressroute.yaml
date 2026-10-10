@@ -7,7 +7,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`city-events.stocznia.dev`)
+    - match: Host(`cowewro.stocznia.dev`)
       kind: Rule
       services:
         - name: city-events-web

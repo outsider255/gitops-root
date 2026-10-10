@@ -6,7 +6,7 @@ metadata:
 spec:
   secretName: city-events-tls
   dnsNames:
-    - city-events.stocznia.dev
+    - cowewro.stocznia.dev
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
