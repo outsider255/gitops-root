@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: city-events-web
+  namespace: city-events
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: city-events-web
+  template:
+    metadata:
+      labels:
+        app: city-events-web
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: web
+          image: ghcr.io/outsider255/city-events-web:PLACEHOLDER
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ConnectionStrings__Db
+              valueFrom:
+                secretKeyRef:
+                  name: city-events-secrets
+                  key: ConnectionStrings__Db
+            - name: Seo__NoIndex
+              value: "true"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi

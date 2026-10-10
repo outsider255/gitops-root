@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: city-events
+  namespace: city-events
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`city-events.stocznia.dev`)
+      kind: Rule
+      services:
+        - name: city-events-web
+          port: 80
+  tls:
+    secretName: city-events-tls
