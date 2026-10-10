@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: city-events-normalise
+  namespace: city-events
+spec:
+  schedule: "*/30 * * * *"
+  timeZone: Europe/Warsaw
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1500
+      template:
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: normalise
+              image: ghcr.io/outsider255/city-events-jobs:c552cd894b545ddc27dc7e91ec39236c5146bd5e
+              args: ["normalise"]
+              env:
+                - name: ConnectionStrings__Db
+                  valueFrom:
+                    secretKeyRef:
+                      name: city-events-secrets
+                      key: ConnectionStrings__Db
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 384Mi
