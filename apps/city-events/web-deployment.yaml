@@ -17,7 +17,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: web
-          image: ghcr.io/outsider255/city-events-web:66e0d83cfe40e9cf018ba6c5b341a29ea8dd6bcb
+          image: ghcr.io/outsider255/city-events-web:9910283dfaa8ee232a9482e6dead0de4d2ac92ac
           ports:
             - containerPort: 8080
               name: http
