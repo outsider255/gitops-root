@@ -20,7 +20,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: fetch
-              image: ghcr.io/outsider255/city-events-jobs:a3775793adacf8b7887e2a9a4b4f8056fb58ca2b
+              image: ghcr.io/outsider255/city-events-jobs:4c6389b11a9fce98332c9577ad1bcbc2c1c527ad
               args: ["fetch", "--quiet"]
               env:
                 - name: ConnectionStrings__Db
