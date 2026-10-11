@@ -28,9 +28,16 @@ spec:
                     secretKeyRef:
                       name: city-events-secrets
                       key: ConnectionStrings__Db
+                - name: NTFY_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: city-events-secrets
+                      key: NTFY_URL
+                      optional: true
               resources:
                 requests:
                   cpu: 50m
                   memory: 128Mi
                 limits:
                   memory: 384Mi
+

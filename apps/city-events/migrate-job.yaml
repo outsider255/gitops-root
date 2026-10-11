@@ -24,3 +24,9 @@ spec:
                 secretKeyRef:
                   name: city-events-secrets
                   key: ConnectionStrings__Db
+            - name: EXTRACTOR_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: city-events-secrets
+                  key: EXTRACTOR_DB_PASSWORD
+                  optional: true
