@@ -20,7 +20,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: normalise
-              image: ghcr.io/outsider255/city-events-jobs:54bdca79d7a47be6e0275505472ad46b7a6bda27
+              image: ghcr.io/outsider255/city-events-jobs:b95f47dfda88501fef022f530c745ec4fc6a8266
               args: ["normalise"]
               env:
                 - name: ConnectionStrings__Db
