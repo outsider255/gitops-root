@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: city-events-watch
+  namespace: city-events
+spec:
+  schedule: "0 2 * * *"
+  timeZone: Europe/Warsaw
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 7200
+      template:
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: watch
+              image: ghcr.io/outsider255/city-events-jobs:708f4c4f5c4d0297eb83fe8c2a44ae2d395492a3
+              args: ["watch"]
+              env:
+                - name: ConnectionStrings__Db
+                  valueFrom:
+                    secretKeyRef:
+                      name: city-events-secrets
+                      key: ConnectionStrings__Db
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 384Mi
+
