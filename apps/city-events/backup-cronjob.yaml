@@ -1,0 +1,102 @@
+# Nightly pg_dump at 05:00, after the PC extractor's night run.
+# Local copy on kraken (7 days) for fast restores; encrypted copy to Cloudflare R2
+# via rclone crypt (7 daily + 4 weekly). Secret city-events-backup is created by
+# city-events/scripts/bootstrap-backup-secret.ps1. A failed Job alerts through the
+# default KubeJobFailed rule -> ntfy.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backups
+  namespace: city-events
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Non-secret rclone settings; the Secret city-events-backup adds
+# RCLONE_CONFIG_R2_ENDPOINT, RCLONE_CONFIG_R2_ACCESS_KEY_ID,
+# RCLONE_CONFIG_R2_SECRET_ACCESS_KEY, CRYPT_PASSWORD and CRYPT_SALT.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: city-events-rclone
+  namespace: city-events
+data:
+  RCLONE_CONFIG_R2_TYPE: s3
+  RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+  RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
+  RCLONE_CONFIG_CRYPT_TYPE: crypt
+  RCLONE_CONFIG_CRYPT_REMOTE: r2:city-events-backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: city-events-backup
+  namespace: city-events
+spec:
+  schedule: "0 5 * * *"
+  timeZone: Europe/Warsaw
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          initContainers:
+            - name: dump
+              image: postgres:16-alpine
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  name="city-events-$(date +%F).dump"
+                  pg_dump -h postgres -U city-events -d city-events -Fc -f "/work/$name"
+                  pg_restore --list "/work/$name" > /dev/null
+                  mkdir -p /local/daily
+                  cp "/work/$name" /local/daily/
+                  find /local/daily -name '*.dump' -mtime +6 -delete
+                  ls -l /local/daily
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: city-events-secrets
+                      key: POSTGRES_PASSWORD
+              volumeMounts:
+                - { name: work, mountPath: /work }
+                - { name: local, mountPath: /local }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          containers:
+            - name: upload
+              image: rclone/rclone:1.68.2
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  export RCLONE_CONFIG_CRYPT_PASSWORD="$(rclone obscure "$CRYPT_PASSWORD")"
+                  export RCLONE_CONFIG_CRYPT_PASSWORD2="$(rclone obscure "$CRYPT_SALT")"
+                  file="$(ls /work/*.dump)"
+                  rclone copyto "$file" "crypt:daily/$(basename "$file")"
+                  if [ "$(date +%u)" = 7 ]; then rclone copyto "$file" "crypt:weekly/$(basename "$file")"; fi
+                  rclone delete crypt:daily --min-age 7d
+                  rclone delete crypt:weekly --min-age 28d
+                  rclone lsl crypt:
+              envFrom:
+                - configMapRef: { name: city-events-rclone }
+                - secretRef: { name: city-events-backup }
+              volumeMounts:
+                - { name: work, mountPath: /work, readOnly: true }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          volumes:
+            - { name: work, emptyDir: {} }
+            - { name: local, persistentVolumeClaim: { claimName: backups } }

@@ -1,0 +1,73 @@
+# Monthly restore test: newest dump from R2 (so it proves the off-node copy and the
+# crypt keys), restored into a throwaway Postgres in the pod, then row-count checks.
+# Fails if the newest dump is older than 2 days. Failure alerts via KubeJobFailed -> ntfy.
+# Run now: sudo -n k3s kubectl -n city-events create job --from=cronjob/city-events-restore-test restore-test-manual
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: city-events-restore-test
+  namespace: city-events
+spec:
+  schedule: "0 7 1 * *"
+  timeZone: Europe/Warsaw
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: Never
+          initContainers:
+            - name: download
+              image: rclone/rclone:1.68.2
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  export RCLONE_CONFIG_CRYPT_PASSWORD="$(rclone obscure "$CRYPT_PASSWORD")"
+                  export RCLONE_CONFIG_CRYPT_PASSWORD2="$(rclone obscure "$CRYPT_SALT")"
+                  latest="$(rclone lsf crypt:daily --include '*.dump' | sort | tail -n 1)"
+                  [ -n "$latest" ] || { echo "no dump in R2"; exit 1; }
+                  echo "newest: $latest"
+                  [ -n "$(rclone lsf crypt:daily --include "$latest" --max-age 2d)" ] || { echo "newest dump older than 2 days"; exit 1; }
+                  rclone copyto "crypt:daily/$latest" /work/latest.dump
+              envFrom:
+                - configMapRef: { name: city-events-rclone }
+                - secretRef: { name: city-events-backup }
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          containers:
+            - name: restore
+              image: postgres:16-alpine
+              securityContext: { runAsUser: 70, runAsGroup: 70 }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  export PGDATA=/scratch/pg PGHOST=/scratch
+                  initdb -U postgres > /dev/null
+                  pg_ctl -w -o "-k /scratch -c listen_addresses=''" start > /dev/null
+                  createdb -U postgres restore
+                  pg_restore -U postgres -d restore --no-owner --no-acl --exit-on-error /work/latest.dump
+                  for t in event occurrence source source_record venue category_map '"__EFMigrationsHistory"'; do
+                    n="$(psql -U postgres -d restore -tAc "select count(*) from $t")"
+                    echo "$t: $n"
+                    [ "$n" -gt 0 ] || { echo "FAIL: $t is empty"; exit 1; }
+                  done
+                  echo "restore test passed"
+              volumeMounts:
+                - { name: work, mountPath: /work, readOnly: true }
+                - { name: scratch, mountPath: /scratch }
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits: { memory: 1Gi }
+          securityContext: { fsGroup: 70 }
+          volumes:
+            - { name: work, emptyDir: {} }
+            - { name: scratch, emptyDir: {} }
