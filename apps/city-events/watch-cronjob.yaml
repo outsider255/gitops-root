@@ -28,6 +28,12 @@ spec:
                     secretKeyRef:
                       name: city-events-secrets
                       key: ConnectionStrings__Db
+                - name: Apify__Token
+                  valueFrom:
+                    secretKeyRef:
+                      name: city-events-apify
+                      key: token
+                      optional: true
               resources:
                 requests:
                   cpu: 50m
