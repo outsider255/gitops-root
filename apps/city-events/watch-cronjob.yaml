@@ -20,7 +20,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: watch
-              image: ghcr.io/outsider255/city-events-jobs:801c9c659c774ddedf4a728d8e6869e0ac4ef398
+              image: ghcr.io/outsider255/city-events-jobs:d4d90bba690a65777476f4a3a1d1bf2a5c6d3681
               args: ["watch"]
               env:
                 - name: ConnectionStrings__Db
