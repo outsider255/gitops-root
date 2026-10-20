@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: city-events-discover
+  namespace: city-events
+spec:
+  schedule: "0 3 * * 1"
+  timeZone: Europe/Warsaw
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 7200
+      template:
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: discover
+              image: ghcr.io/outsider255/city-events-jobs:8a278e0d3182cfab9f19ef10bcd728195b88c496
+              args: ["discover"]
+              env:
+                - name: ConnectionStrings__Db
+                  valueFrom:
+                    secretKeyRef:
+                      name: city-events-secrets
+                      key: ConnectionStrings__Db
+                - name: NTFY_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: city-events-secrets
+                      key: NTFY_URL
+                      optional: true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 384Mi
