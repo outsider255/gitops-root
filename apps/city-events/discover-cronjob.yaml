@@ -20,7 +20,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: discover
-              image: ghcr.io/outsider255/city-events-jobs:522395889d7b4ec3e9585c71ec15d88559721ee4
+              image: ghcr.io/outsider255/city-events-jobs:9abd3362b2740c9cfcb215ec0dccc2d59afc8b8c
               args: ["discover"]
               env:
                 - name: ConnectionStrings__Db
