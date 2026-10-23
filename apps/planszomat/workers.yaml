@@ -25,7 +25,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: cli
-          image: ghcr.io/outsider255/planszomat-cli:1711f8b87f67d0dd9dbf29e00b9212ea3252c917
+          image: ghcr.io/outsider255/planszomat-cli:51accf15ad7a23183e72b7ebd483b01b7a9e4d1b
           args: ["bgg-worker"]
           env:
             - name: PLANSZOMAT_DB
@@ -70,7 +70,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: cli
-          image: ghcr.io/outsider255/planszomat-cli:1711f8b87f67d0dd9dbf29e00b9212ea3252c917
+          image: ghcr.io/outsider255/planszomat-cli:51accf15ad7a23183e72b7ebd483b01b7a9e4d1b
           args: ["classify-names-worker"]
           env:
             - name: PLANSZOMAT_DB
