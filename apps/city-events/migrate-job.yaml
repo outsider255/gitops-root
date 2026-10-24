@@ -16,7 +16,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: migrate
-          image: ghcr.io/outsider255/city-events-jobs:8633bc8e98478235e305f2c2952d8a4d428721aa
+          image: ghcr.io/outsider255/city-events-jobs:fdd6dbdef5b92372b4250dee61cb8281ac8b7e97
           command: ["sh", "-c", "dotnet CityEvents.Jobs.dll migrate && dotnet CityEvents.Jobs.dll seed --data /app/data"]
           env:
             - name: ConnectionStrings__Db
