@@ -571,58 +571,6 @@ spec:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: match
-  namespace: planszomat
-spec:
-  # Suspended for the catalogue cutover: legacy match must not write while catalogue
-  # assignments are migrated and read (docs/catalogue-cutover-plan.md). Delete after rollback window.
-  suspend: true
-  schedule: "0 3 * * *"
-  timeZone: Etc/UTC
-  # A node/controller outage over 01:00-03:00 should skip a badly-missed slot rather
-  # than fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself,
-  # and a delayed match landing on top of publish-issue would scramble the night.
-  startingDeadlineSeconds: 900
-  # match must not overlap itself; the crawls it depends on are scheduled to have
-  # finished well before this starts. Left on the default backoffLimit (6): a match
-  # failure is usually a transient database problem, where retrying is the right
-  # answer, and there is no third party here to annoy the way a retried crawl would.
-  concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 1
-  jobTemplate:
-    spec:
-      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
-      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
-      ttlSecondsAfterFinished: 86400
-      activeDeadlineSeconds: 3600
-      template:
-        spec:
-          restartPolicy: OnFailure
-          imagePullSecrets:
-            - name: ghcr-pull
-          containers:
-            - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:07e27af79fc896adcc7b6e8c0dc4b775a13c7245
-              # Local-only: deterministic evidence, cache lookup, and durable queue writes.
-              # Remote BGG/OpenRouter calls belong exclusively to the worker Deployments.
-              args: ["match"]
-              env:
-                - name: PLANSZOMAT_DB
-                  valueFrom:
-                    secretKeyRef:
-                      name: planszomat-db
-                      key: PLANSZOMAT_DB
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 256Mi
-                limits:
-                  memory: 1Gi
----
-apiVersion: batch/v1
-kind: CronJob
-metadata:
   name: publish-issue
   namespace: planszomat
 spec:
@@ -669,66 +617,6 @@ spec:
                       key: PLANSZOMAT_DB
                 - name: PLANSZOMAT_READ_MODEL
                   value: catalog
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 256Mi
-                limits:
-                  memory: 1Gi
----
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: sync-bgg
-  namespace: planszomat
-spec:
-  suspend: true
-  # After publish-issue (05:00): nothing downstream waits on alt names tonight — they
-  # sharpen tomorrow's trigram matching, not today's issue.
-  schedule: "0 6 * * *"
-  timeZone: Etc/UTC
-  startingDeadlineSeconds: 900
-  concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 1
-  failedJobsHistoryLimit: 1
-  jobTemplate:
-    spec:
-      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
-      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
-      ttlSecondsAfterFinished: 86400
-      # BGG throttles hard (5 s between requests); unattended retries against a
-      # throttling API are the crawl argument all over again.
-      backoffLimit: 1
-      # A nightly slice is ~18 min (ceil(30k/7) ids at 20-per-5s). One hour bounds a
-      # wedged run without killing a slow one.
-      activeDeadlineSeconds: 3600
-      template:
-        spec:
-          restartPolicy: OnFailure
-          imagePullSecrets:
-            - name: ghcr-pull
-          containers:
-            - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:07e27af79fc896adcc7b6e8c0dc4b775a13c7245
-              # No id-file: database mode syncs the ceil(n/7) stalest-synced bgg_item
-              # rows, so the whole catalogue's alt names roll over every seven nights.
-              args: ["sync-bgg"]
-              env:
-                - name: PLANSZOMAT_DB
-                  valueFrom:
-                    secretKeyRef:
-                      name: planszomat-db
-                      key: PLANSZOMAT_DB
-                - name: BGG_API_TOKEN
-                  valueFrom:
-                    secretKeyRef:
-                      name: planszomat-bgg
-                      key: BGG_API_TOKEN
-                - name: OPENROUTER_API_KEY
-                  valueFrom:
-                    secretKeyRef:
-                      name: planszomat-openrouter
-                      key: OPENROUTER_API_KEY
               resources:
                 requests:
                   cpu: 100m
