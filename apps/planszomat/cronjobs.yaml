@@ -454,6 +454,295 @@ spec:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
+  name: crawl-abondegames
+  namespace: planszomat
+spec:
+  # Onboarded 2026-10-31: ~1,500 product pages (sitemap), first full crawl about 1 h.
+  suspend: false
+  timeZone: Etc/UTC
+  schedule: "0 1 * * *"
+  # A node/controller outage over 01:00 should skip a badly-missed slot rather than
+  # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
+  # a delayed crawl landing on top of match or publish-issue would scramble the night.
+  startingDeadlineSeconds: 900
+  # A crawl that overruns into the next night must not have a second copy
+  # started on top of it.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
+      # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
+      # everywhere else; six unattended retries against a shop that may already be
+      # rate-limiting or rejecting us would undo that.
+      backoffLimit: 1
+      # A full rebel crawl is about six hours today; seven bounds a genuinely wedged
+      # crawl (stuck pod, unresponsive shop) without killing a slow-but-working one.
+      activeDeadlineSeconds: 25200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:51bd839cac819b064d38dc62bc14f8c356f423a0
+              args: ["crawl", "abondegames"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              # Starting point, not measured: a crawl holds shop pages in memory while
+              # parsing HTML. If 1Gi is tight it gets OOMKilled, feeding a failure that
+              # retrying cannot resolve. Check actual usage after the first night and
+              # adjust.
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crawl-planszownia
+  namespace: planszomat
+spec:
+  # Onboarded 2026-10-31: ~170 product pages (sitemap of sklep.planszownia.pl), a few minutes.
+  suspend: false
+  timeZone: Etc/UTC
+  schedule: "0 1 * * *"
+  # A node/controller outage over 01:00 should skip a badly-missed slot rather than
+  # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
+  # a delayed crawl landing on top of match or publish-issue would scramble the night.
+  startingDeadlineSeconds: 900
+  # A crawl that overruns into the next night must not have a second copy
+  # started on top of it.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
+      # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
+      # everywhere else; six unattended retries against a shop that may already be
+      # rate-limiting or rejecting us would undo that.
+      backoffLimit: 1
+      # A full rebel crawl is about six hours today; seven bounds a genuinely wedged
+      # crawl (stuck pod, unresponsive shop) without killing a slow-but-working one.
+      activeDeadlineSeconds: 25200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:51bd839cac819b064d38dc62bc14f8c356f423a0
+              args: ["crawl", "planszownia"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              # Starting point, not measured: a crawl holds shop pages in memory while
+              # parsing HTML. If 1Gi is tight it gets OOMKilled, feeding a failure that
+              # retrying cannot resolve. Check actual usage after the first night and
+              # adjust.
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crawl-dragonus
+  namespace: planszomat
+spec:
+  # Onboarded 2026-10-31: ~4,800 product pages (sitemap), first full crawl a few hours.
+  suspend: false
+  timeZone: Etc/UTC
+  schedule: "0 1 * * *"
+  # A node/controller outage over 01:00 should skip a badly-missed slot rather than
+  # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
+  # a delayed crawl landing on top of match or publish-issue would scramble the night.
+  startingDeadlineSeconds: 900
+  # A crawl that overruns into the next night must not have a second copy
+  # started on top of it.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
+      # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
+      # everywhere else; six unattended retries against a shop that may already be
+      # rate-limiting or rejecting us would undo that.
+      backoffLimit: 1
+      # A full rebel crawl is about six hours today; seven bounds a genuinely wedged
+      # crawl (stuck pod, unresponsive shop) without killing a slow-but-working one.
+      activeDeadlineSeconds: 25200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:51bd839cac819b064d38dc62bc14f8c356f423a0
+              args: ["crawl", "dragonus"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              # Starting point, not measured: a crawl holds shop pages in memory while
+              # parsing HTML. If 1Gi is tight it gets OOMKilled, feeding a failure that
+              # retrying cannot resolve. Check actual usage after the first night and
+              # adjust.
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crawl-planszomania
+  namespace: planszomat
+spec:
+  # Onboarded 2026-10-31: ~4,000 product pages found by walking 11 categories (no sitemap); duration unmeasured.
+  suspend: false
+  timeZone: Etc/UTC
+  schedule: "0 1 * * *"
+  # A node/controller outage over 01:00 should skip a badly-missed slot rather than
+  # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
+  # a delayed crawl landing on top of match or publish-issue would scramble the night.
+  startingDeadlineSeconds: 900
+  # A crawl that overruns into the next night must not have a second copy
+  # started on top of it.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
+      # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
+      # everywhere else; six unattended retries against a shop that may already be
+      # rate-limiting or rejecting us would undo that.
+      backoffLimit: 1
+      # A full rebel crawl is about six hours today; seven bounds a genuinely wedged
+      # crawl (stuck pod, unresponsive shop) without killing a slow-but-working one.
+      activeDeadlineSeconds: 25200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:51bd839cac819b064d38dc62bc14f8c356f423a0
+              args: ["crawl", "planszomania"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              # Starting point, not measured: a crawl holds shop pages in memory while
+              # parsing HTML. If 1Gi is tight it gets OOMKilled, feeding a failure that
+              # retrying cannot resolve. Check actual usage after the first night and
+              # adjust.
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crawl-granaczas
+  namespace: planszomat
+spec:
+  # Onboarded 2026-10-31: ~1,600 product pages found by walking the product listing (no sitemap); duration unmeasured.
+  suspend: false
+  timeZone: Etc/UTC
+  schedule: "0 1 * * *"
+  # A node/controller outage over 01:00 should skip a badly-missed slot rather than
+  # fire it late — concurrencyPolicy: Forbid only stops a job overlapping itself, and
+  # a delayed crawl landing on top of match or publish-issue would scramble the night.
+  startingDeadlineSeconds: 900
+  # A crawl that overruns into the next night must not have a second copy
+  # started on top of it.
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      # Finished jobs (and their pods) go after a day: KubeJobFailed fires for as long as a
+      # failed Job exists, so kept failures re-alerted for weeks. A day still leaves the log.
+      ttlSecondsAfterFinished: 86400
+      # Kubernetes defaults to 6 retries. This project honours each shop's Crawl-delay
+      # everywhere else; six unattended retries against a shop that may already be
+      # rate-limiting or rejecting us would undo that.
+      backoffLimit: 1
+      # A full rebel crawl is about six hours today; seven bounds a genuinely wedged
+      # crawl (stuck pod, unresponsive shop) without killing a slow-but-working one.
+      activeDeadlineSeconds: 25200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: cli
+              image: ghcr.io/outsider255/planszomat-cli:51bd839cac819b064d38dc62bc14f8c356f423a0
+              args: ["crawl", "granaczas"]
+              env:
+                - name: PLANSZOMAT_DB
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: PLANSZOMAT_DB
+              # Starting point, not measured: a crawl holds shop pages in memory while
+              # parsing HTML. If 1Gi is tight it gets OOMKilled, feeding a failure that
+              # retrying cannot resolve. Check actual usage after the first night and
+              # adjust.
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
   name: crawl-mepel
   namespace: planszomat
 spec:
