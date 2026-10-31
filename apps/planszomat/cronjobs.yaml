@@ -1,15 +1,11 @@
-# UTC sequence: check-categories 00:30; crawls 01:00; match 03:00-04:15;
-# check-matches 04:15-04:45; publish-issue 05:00; sync-bgg 06:00.
-# The pipeline is crawls -> match -> check-matches -> publish-issue -> sync-bgg.
-# The crawls run as independent parallel pods — measured at
-# ~100-160Mi each, so the node (32Gi) and Postgres carry 10-15 at once without staggering;
-# the ~90min gap to match absorbs a steady-state (~1h) crawl. See CLAUDE.md and
-# docs/known-issues.md. Order is load-bearing: publish-issue's `fresh` section only counts
-# a game as new if it was both
-# crawled in the window AND already match_status = matched, so match must finish first.
-# publish-issue also refuses unless a majority of enabled shops have a finished crawl_run
-# for that UTC date — so a mass overrun still yields no issue rather than a wrong one, while
-# one overrunning shop no longer sinks the whole night.
+# UTC sequence: check-categories 00:30; crawls 01:00; catalog-nightly 04:00 (in
+# catalog-nightly.yaml); check-matches 04:15; publish-issue 05:00.
+# The crawls run as independent parallel pods (~100-160Mi each), so the node (32Gi) and
+# Postgres carry them all at once; the 3h gap to catalog-nightly absorbs a slow crawl.
+# Order is load-bearing: catalog-nightly places the night's new offers before
+# publish-issue reads them. publish-issue also refuses unless a majority of enabled shops
+# have a finished crawl_run for that UTC date — so a mass overrun yields no issue rather
+# than a wrong one, while one overrunning shop does not sink the whole night.
 #
 # Image is pinned to a git SHA, not :latest: a change in behaviour for a job nobody watches
 # at 01:00 should always have a commit behind it and be revertible. Bump the SHA only to
