@@ -71,7 +71,9 @@ metadata:
   name: check-matches
   namespace: planszomat
 spec:
-  suspend: false
+  # Suspended 2026-10-31: it gates the old matcher, failed nightly since 2026-08-21 on 18
+  # offers nobody acted on, and the rebuild replaces it with the golden set.
+  suspend: true
   # A 15-minute start window plus this 15-minute deadline ends by 04:45, before publish.
   schedule: "15 4 * * *"
   timeZone: Etc/UTC
