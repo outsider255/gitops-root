@@ -12,9 +12,8 @@ Required Secrets in namespace `planszomat`:
 - `planszomat-backup`: R2 endpoint and access key (backup and restore-test CronJobs). Created by
   `Planszomat/scripts/bootstrap-backup-secret.ps1`; the token can be re-issued in Cloudflare.
 
-No longer consumed, safe to delete: `planszomat-bgg`, `planszomat-openrouter`, `planszomat-gemini`.
 
 The API accepts only access tokens issued by the configured Planszomat ZITADEL instance for the
 configured audience. Administrator routes additionally require the `planszomat.admin` project
-role in the configured role claim. The legacy `planszomat-supabase` Secret is no longer consumed;
-removing that Secret or deleting the external Supabase project is a separate operational action.
+role in the configured role claim. The legacy Supabase Secret was deleted 2026-10-31; deleting
+the external Supabase project is a separate operational action.
