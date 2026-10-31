@@ -6,8 +6,8 @@ kind: PrometheusRule
 metadata:
   name: planszomat
   namespace: planszomat
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
+  # No sync-wave: a later wave waits for every CronJob in wave 0 to be healthy, and one
+  # failed crawl run marks a CronJob Degraded, which stalled the whole sync on 2026-10-31.
   labels:
     release: monitoring
 spec:
