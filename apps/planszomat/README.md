@@ -15,5 +15,5 @@ Required Secrets in namespace `planszomat`:
 
 The API accepts only access tokens issued by the configured Planszomat ZITADEL instance for the
 configured audience. Administrator routes additionally require the `planszomat.admin` project
-role in the configured role claim. The legacy `planszomat-supabase` Secret is no longer consumed;
-removing that Secret or deleting the external Supabase project is a separate operational action.
+role in the configured role claim. The legacy Supabase Secret was deleted 2026-10-31; deleting
+the external Supabase project is a separate operational action.
