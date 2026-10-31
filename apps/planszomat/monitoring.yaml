@@ -1,0 +1,48 @@
+# Planszomat alerts on top of the kube-prometheus-stack defaults, which already cover a
+# failed Job (KubeJobFailed) and one stuck for 12 h (KubeJobNotCompleted). These add the
+# silent cases: a CronJob that stops running, and the API or Postgres being down.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: planszomat
+  namespace: planszomat
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: planszomat
+      rules:
+        # Every Planszomat CronJob except the monthly restore test runs daily. A wedged Job
+        # under concurrencyPolicy: Forbid, or a missed start window, shows up only here.
+        - alert: PlanszomatCronJobStale
+          expr: |
+            (
+              time() - max by (namespace, cronjob) (
+                kube_cronjob_status_last_successful_time{namespace="planszomat",cronjob!="planszomat-restore-test"}
+              ) > 26 * 60 * 60
+            )
+              unless on (namespace, cronjob)
+            (kube_cronjob_spec_suspend{namespace="planszomat"} == 1)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Planszomat CronJob {{ $labels.cronjob }} has not succeeded for over 26 h"
+        - alert: PlanszomatApiDown
+          expr: |
+            kube_deployment_status_replicas_available{namespace="planszomat",deployment="planszomat-api"} < 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Planszomat API has no available replica
+        - alert: PlanszomatPostgresDown
+          expr: |
+            kube_statefulset_status_replicas_ready{namespace="planszomat",statefulset="postgres"} < 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Planszomat Postgres has no ready replica

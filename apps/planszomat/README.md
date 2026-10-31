@@ -8,9 +8,13 @@ Required Secrets in namespace `planszomat`:
 - `ghcr-pull`: registry credentials used by every application workload.
 - `planszomat-db`: `POSTGRES_PASSWORD` and `PLANSZOMAT_DB`.
 - `planszomat-identity`: `ZITADEL_ISSUER`, `OIDC_AUDIENCE`, and `ZITADEL_ROLE_CLAIM`.
-- `planszomat-bgg`: `BGG_API_TOKEN`. Unused since the BGG sync was removed (2026-10-30); safe to delete.
-- `planszomat-openrouter`: `OPENROUTER_API_KEY` (check-shipping only).
 - `planszomat-typesafe`: `TYPESAFE_API_KEY` (catalog-nightly, Jev family judge).
+- `planszomat-backup`: R2 endpoint and access key, rclone crypt password and salt (backup and
+  restore-test CronJobs). Created by `Planszomat/scripts/bootstrap-backup-secret.ps1`; the crypt
+  password and salt are also escrowed in the password manager — without them the R2 copies are
+  unreadable.
+
+No longer consumed, safe to delete: `planszomat-bgg`, `planszomat-openrouter`, `planszomat-gemini`.
 
 The API accepts only access tokens issued by the configured Planszomat ZITADEL instance for the
 configured audience. Administrator routes additionally require the `planszomat.admin` project
