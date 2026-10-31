@@ -25,7 +25,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: api
-          image: ghcr.io/outsider255/planszomat-api:58c458e80b3fa8d9c80c748cc26d10d783f39b0b
+          image: ghcr.io/outsider255/planszomat-api:f23bdcb9d49567c52d52804f6197c5742e59daa2
           ports:
             - containerPort: 8080
               name: http
