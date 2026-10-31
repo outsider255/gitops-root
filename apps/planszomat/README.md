@@ -9,10 +9,8 @@ Required Secrets in namespace `planszomat`:
 - `planszomat-db`: `POSTGRES_PASSWORD` and `PLANSZOMAT_DB`.
 - `planszomat-identity`: `ZITADEL_ISSUER`, `OIDC_AUDIENCE`, and `ZITADEL_ROLE_CLAIM`.
 - `planszomat-typesafe`: `TYPESAFE_API_KEY` (catalog-nightly, Jev family judge).
-- `planszomat-backup`: R2 endpoint and access key, rclone crypt password and salt (backup and
-  restore-test CronJobs). Created by `Planszomat/scripts/bootstrap-backup-secret.ps1`; the crypt
-  password and salt are also escrowed in the password manager — without them the R2 copies are
-  unreadable.
+- `planszomat-backup`: R2 endpoint and access key (backup and restore-test CronJobs). Created by
+  `Planszomat/scripts/bootstrap-backup-secret.ps1`; the token can be re-issued in Cloudflare.
 
 No longer consumed, safe to delete: `planszomat-bgg`, `planszomat-openrouter`, `planszomat-gemini`.
 

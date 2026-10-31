@@ -1,6 +1,8 @@
 # Nightly pg_dump at 05:30 UTC, after publish-issue. Price history cannot be recrawled, so
 # this is the only copy that survives a lost node. Local copy on kraken (3 days) for fast
-# restores; encrypted copy to Cloudflare R2 via rclone crypt (7 daily + 4 weekly).
+# restores; copy to the private Cloudflare R2 bucket planszomat-backups (7 daily + 4 weekly).
+# Not encrypted on purpose: the DB holds no emails or passwords, and a key kept only in
+# this cluster would die with the node it is meant to survive.
 # Secret planszomat-backup is created by Planszomat/scripts/bootstrap-backup-secret.ps1.
 # A failed Job alerts through KubeJobFailed -> ntfy; a run that never happens alerts through
 # PlanszomatCronJobStale (monitoring.yaml).
@@ -19,7 +21,7 @@ spec:
 ---
 # Non-secret rclone settings; the Secret planszomat-backup adds
 # RCLONE_CONFIG_R2_ENDPOINT, RCLONE_CONFIG_R2_ACCESS_KEY_ID,
-# RCLONE_CONFIG_R2_SECRET_ACCESS_KEY, CRYPT_PASSWORD and CRYPT_SALT.
+# and RCLONE_CONFIG_R2_SECRET_ACCESS_KEY.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -29,8 +31,6 @@ data:
   RCLONE_CONFIG_R2_TYPE: s3
   RCLONE_CONFIG_R2_PROVIDER: Cloudflare
   RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
-  RCLONE_CONFIG_CRYPT_TYPE: crypt
-  RCLONE_CONFIG_CRYPT_REMOTE: r2:planszomat-backups
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -86,14 +86,12 @@ spec:
               args:
                 - |
                   set -eu
-                  export RCLONE_CONFIG_CRYPT_PASSWORD="$(rclone obscure "$CRYPT_PASSWORD")"
-                  export RCLONE_CONFIG_CRYPT_PASSWORD2="$(rclone obscure "$CRYPT_SALT")"
                   file="$(ls /work/*.dump)"
-                  rclone copyto "$file" "crypt:daily/$(basename "$file")"
-                  if [ "$(date +%u)" = 7 ]; then rclone copyto "$file" "crypt:weekly/$(basename "$file")"; fi
-                  rclone delete crypt:daily --min-age 7d
-                  rclone delete crypt:weekly --min-age 28d
-                  rclone lsl crypt:
+                  rclone copyto "$file" "r2:planszomat-backups/daily/$(basename "$file")"
+                  if [ "$(date +%u)" = 7 ]; then rclone copyto "$file" "r2:planszomat-backups/weekly/$(basename "$file")"; fi
+                  rclone delete r2:planszomat-backups/daily --min-age 7d
+                  rclone delete r2:planszomat-backups/weekly --min-age 28d
+                  rclone lsl r2:planszomat-backups/
               envFrom:
                 - configMapRef: { name: planszomat-rclone }
                 - secretRef: { name: planszomat-backup }
@@ -106,7 +104,7 @@ spec:
             - { name: work, emptyDir: {} }
             - { name: local, persistentVolumeClaim: { claimName: backups } }
 ---
-# Monthly restore test: newest dump from R2 (proves the off-node copy and the crypt keys),
+# Monthly restore test: newest dump from R2 (proves the off-node copy and its credentials),
 # restored into a throwaway Postgres in the pod, then row-count checks. Fails if the newest
 # dump is older than 2 days. Failure alerts via KubeJobFailed -> ntfy.
 # Run now: sudo -n k3s kubectl -n planszomat create job --from=cronjob/planszomat-restore-test restore-test-manual
@@ -137,13 +135,11 @@ spec:
               args:
                 - |
                   set -eu
-                  export RCLONE_CONFIG_CRYPT_PASSWORD="$(rclone obscure "$CRYPT_PASSWORD")"
-                  export RCLONE_CONFIG_CRYPT_PASSWORD2="$(rclone obscure "$CRYPT_SALT")"
-                  latest="$(rclone lsf crypt:daily --include '*.dump' | sort | tail -n 1)"
+                  latest="$(rclone lsf r2:planszomat-backups/daily --include '*.dump' | sort | tail -n 1)"
                   [ -n "$latest" ] || { echo "no dump in R2"; exit 1; }
                   echo "newest: $latest"
-                  [ -n "$(rclone lsf crypt:daily --include "$latest" --max-age 2d)" ] || { echo "newest dump older than 2 days"; exit 1; }
-                  rclone copyto "crypt:daily/$latest" /work/latest.dump
+                  [ -n "$(rclone lsf r2:planszomat-backups/daily --include "$latest" --max-age 2d)" ] || { echo "newest dump older than 2 days"; exit 1; }
+                  rclone copyto "r2:planszomat-backups/daily/$latest" /work/latest.dump
               envFrom:
                 - configMapRef: { name: planszomat-rclone }
                 - secretRef: { name: planszomat-backup }
