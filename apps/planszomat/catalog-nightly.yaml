@@ -38,8 +38,6 @@ spec:
                   --cache /data/catalog-nightly/cache
                   --page-size 25 --concurrency 16 --time-budget 45
               env:
-                - name: PLANSZOMAT_READ_MODEL
-                  value: catalog
                 - name: PLANSZOMAT_DB
                   valueFrom:
                     secretKeyRef:
