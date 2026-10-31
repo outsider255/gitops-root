@@ -1,0 +1,183 @@
+# Nightly pg_dump at 05:30 UTC, after publish-issue. Price history cannot be recrawled, so
+# this is the only copy that survives a lost node. Local copy on kraken (3 days) for fast
+# restores; encrypted copy to Cloudflare R2 via rclone crypt (7 daily + 4 weekly).
+# Secret planszomat-backup is created by Planszomat/scripts/bootstrap-backup-secret.ps1.
+# A failed Job alerts through KubeJobFailed -> ntfy; a run that never happens alerts through
+# PlanszomatCronJobStale (monitoring.yaml).
+# Run now: sudo -n k3s kubectl -n planszomat create job --from=cronjob/planszomat-backup backup-manual
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backups
+  namespace: planszomat
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 20Gi
+---
+# Non-secret rclone settings; the Secret planszomat-backup adds
+# RCLONE_CONFIG_R2_ENDPOINT, RCLONE_CONFIG_R2_ACCESS_KEY_ID,
+# RCLONE_CONFIG_R2_SECRET_ACCESS_KEY, CRYPT_PASSWORD and CRYPT_SALT.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: planszomat-rclone
+  namespace: planszomat
+data:
+  RCLONE_CONFIG_R2_TYPE: s3
+  RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+  RCLONE_CONFIG_R2_NO_CHECK_BUCKET: "true"
+  RCLONE_CONFIG_CRYPT_TYPE: crypt
+  RCLONE_CONFIG_CRYPT_REMOTE: r2:planszomat-backups
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: planszomat-backup
+  namespace: planszomat
+spec:
+  suspend: false
+  timeZone: Etc/UTC
+  schedule: "30 5 * * *"
+  startingDeadlineSeconds: 3600
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          restartPolicy: Never
+          initContainers:
+            - name: dump
+              image: postgres:16-alpine
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  name="planszomat-$(date +%F).dump"
+                  pg_dump -h postgres -U planszomat -d planszomat -Fc -f "/work/$name"
+                  pg_restore --list "/work/$name" > /dev/null
+                  mkdir -p /local/daily
+                  cp "/work/$name" /local/daily/
+                  find /local/daily -name '*.dump' -mtime +2 -delete
+                  ls -l /local/daily
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: planszomat-db
+                      key: POSTGRES_PASSWORD
+              volumeMounts:
+                - { name: work, mountPath: /work }
+                - { name: local, mountPath: /local }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 512Mi }
+          containers:
+            - name: upload
+              image: rclone/rclone:1.68.2
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  export RCLONE_CONFIG_CRYPT_PASSWORD="$(rclone obscure "$CRYPT_PASSWORD")"
+                  export RCLONE_CONFIG_CRYPT_PASSWORD2="$(rclone obscure "$CRYPT_SALT")"
+                  file="$(ls /work/*.dump)"
+                  rclone copyto "$file" "crypt:daily/$(basename "$file")"
+                  if [ "$(date +%u)" = 7 ]; then rclone copyto "$file" "crypt:weekly/$(basename "$file")"; fi
+                  rclone delete crypt:daily --min-age 7d
+                  rclone delete crypt:weekly --min-age 28d
+                  rclone lsl crypt:
+              envFrom:
+                - configMapRef: { name: planszomat-rclone }
+                - secretRef: { name: planszomat-backup }
+              volumeMounts:
+                - { name: work, mountPath: /work, readOnly: true }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          volumes:
+            - { name: work, emptyDir: {} }
+            - { name: local, persistentVolumeClaim: { claimName: backups } }
+---
+# Monthly restore test: newest dump from R2 (proves the off-node copy and the crypt keys),
+# restored into a throwaway Postgres in the pod, then row-count checks. Fails if the newest
+# dump is older than 2 days. Failure alerts via KubeJobFailed -> ntfy.
+# Run now: sudo -n k3s kubectl -n planszomat create job --from=cronjob/planszomat-restore-test restore-test-manual
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: planszomat-restore-test
+  namespace: planszomat
+spec:
+  suspend: false
+  timeZone: Etc/UTC
+  schedule: "0 7 1 * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 0
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          restartPolicy: Never
+          initContainers:
+            - name: download
+              image: rclone/rclone:1.68.2
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  export RCLONE_CONFIG_CRYPT_PASSWORD="$(rclone obscure "$CRYPT_PASSWORD")"
+                  export RCLONE_CONFIG_CRYPT_PASSWORD2="$(rclone obscure "$CRYPT_SALT")"
+                  latest="$(rclone lsf crypt:daily --include '*.dump' | sort | tail -n 1)"
+                  [ -n "$latest" ] || { echo "no dump in R2"; exit 1; }
+                  echo "newest: $latest"
+                  [ -n "$(rclone lsf crypt:daily --include "$latest" --max-age 2d)" ] || { echo "newest dump older than 2 days"; exit 1; }
+                  rclone copyto "crypt:daily/$latest" /work/latest.dump
+              envFrom:
+                - configMapRef: { name: planszomat-rclone }
+                - secretRef: { name: planszomat-backup }
+              volumeMounts:
+                - { name: work, mountPath: /work }
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          containers:
+            - name: restore
+              image: postgres:16-alpine
+              securityContext: { runAsUser: 70, runAsGroup: 70 }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  export PGDATA=/scratch/pg PGHOST=/scratch
+                  initdb -U postgres > /dev/null
+                  pg_ctl -w -o "-k /scratch -c listen_addresses=''" start > /dev/null
+                  createdb -U postgres restore
+                  pg_restore -U postgres -d restore --no-owner --no-acl --exit-on-error /work/latest.dump
+                  for t in shop product price crawl_run catalog_family catalog_product; do
+                    n="$(psql -U postgres -d restore -tAc "select count(*) from $t")"
+                    echo "$t: $n"
+                    [ "$n" -gt 0 ] || { echo "FAIL: $t is empty"; exit 1; }
+                  done
+                  echo "restore test passed"
+              volumeMounts:
+                - { name: work, mountPath: /work, readOnly: true }
+                - { name: scratch, mountPath: /scratch }
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits: { memory: 1Gi }
+          securityContext: { fsGroup: 70 }
+          volumes:
+            - { name: work, emptyDir: {} }
+            - { name: scratch, emptyDir: {} }
