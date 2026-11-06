@@ -48,7 +48,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               # Queues category_review rows for the local review-categories CLI, which
               # rewrites the shop config in git; this job never changes crawl scope itself.
               args: ["check-categories"]
@@ -96,7 +96,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["check-matches"]
               env:
                 - name: PLANSZOMAT_DB
@@ -148,7 +148,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "rebel"]
               env:
                 - name: PLANSZOMAT_DB
@@ -204,7 +204,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "planszostrefa"]
               env:
                 - name: PLANSZOMAT_DB
@@ -261,7 +261,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "grybezpradu"]
               env:
                 - name: PLANSZOMAT_DB
@@ -318,7 +318,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "3trolle"]
               env:
                 - name: PLANSZOMAT_DB
@@ -375,7 +375,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "xjoy"]
               env:
                 - name: PLANSZOMAT_DB
@@ -432,7 +432,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "graszki"]
               env:
                 - name: PLANSZOMAT_DB
@@ -489,7 +489,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "abondegames"]
               env:
                 - name: PLANSZOMAT_DB
@@ -547,7 +547,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "planszownia"]
               env:
                 - name: PLANSZOMAT_DB
@@ -605,7 +605,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "dragonus"]
               env:
                 - name: PLANSZOMAT_DB
@@ -663,7 +663,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "planszomania"]
               env:
                 - name: PLANSZOMAT_DB
@@ -721,7 +721,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "granaczas"]
               env:
                 - name: PLANSZOMAT_DB
@@ -778,7 +778,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "mepel"]
               env:
                 - name: PLANSZOMAT_DB
@@ -834,7 +834,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               args: ["crawl", "aleplanszowki"]
               env:
                 - name: PLANSZOMAT_DB
@@ -888,7 +888,7 @@ spec:
             - name: ghcr-pull
           containers:
             - name: cli
-              image: ghcr.io/outsider255/planszomat-cli:08887c41098661301d4b6186bc76e6f50337b0fb
+              image: ghcr.io/outsider255/planszomat-cli:3f88da0b7f4847d79ada7b57a24fb74f7542b949
               # No date argument: the command defaults to today in UTC, and the crawls
               # it depends on ran at 01:00-02:00 the same UTC day. Only failure to reach a
               # strict majority of enabled shops blocks publication; a minority outage still
